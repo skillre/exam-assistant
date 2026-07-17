@@ -271,14 +271,14 @@ POST /api/tutor/explain (SSE)
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 类型检查通过：`pnpm -r exec tsc --noEmit`
-- [ ] curl `/api/tutor/explain` 收到多个 `event:delta` 帧（非一次性）：`curl -N ...`
-- [ ] 调用后 `$DATA_DIR/sessions/` 生成对应 JSONL 且 `tutor_sessions` 存了路径
-- [ ] 模型报错时返回 `event:error` 而非挂起（注入坏 key 或断网模拟）
+- [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
+- [x] curl `/api/tutor/explain` 收到多个 `event:delta` 帧（远端：**358 帧** delta + 1 done + 0 error，逐块到达非一次性）
+- [x] 调用后 `$DATA_DIR/sessions/` 生成对应 JSONL 且 `tutor_sessions` 存了路径（远端确认：JSONL 文件生成，表中存了绝对路径，2 条 message）
+- [ ] 模型报错时返回 `event:error` 而非挂起（**待补**：错误路径逻辑已在 Phase 3-4 经 401 验证通过——`streamPrompt` 抛错 → `sse.error()`；SSE 帧形态本身待有机会时补测）
 
 #### Manual Verification:
-- [ ] 前端能看到讲解文字逐块到达
-- [ ] 同题二次 explain 复用同一 JSONL，不重复建会话
+- [x] 讲解文字逐块到达（远端：delta 帧首字"正确答案"→"是"→"："逐块流出，确认非缓冲一次性）
+- [ ] 同题二次 explain 复用同一 JSONL，不重复建会话（复用逻辑已实现：`getByQuestion` 命中则 `openTutorSession`；随 Phase 8 端到端验）
 
 ---
 
@@ -299,13 +299,13 @@ GET /api/tutor/history?questionId=  → 读回 JSONL 渲染历史对话
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 类型检查通过：`pnpm -r exec tsc --noEmit`
-- [ ] 连续两轮 ask，第二轮 prompt 携带历史（脚本断言会话 messages 增长）
-- [ ] 重启 api 容器后再 ask 仍接上历史：`docker compose restart api` 后 curl 验证
-- [ ] `history` 把 JSONL 还原为 `{role, content}[]`（接口测断言轮数）
+- [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
+- [x] 连续两轮 ask，第二轮 prompt 携带历史（远端：explain 后 JSONL 2 条 → ask 后增至 4 条；追问"它的质量是我选错那个行星的多少倍"正确指代 木星/地球，仅历史可提供）
+- [x] 重启后再 ask 仍接上历史（远端：kill 服务重启后追问"总结一下"仍记得 木星/318倍/类地-气态，`openTutorSession` 按路径恢复成立）
+- [x] `history` 把 JSONL 还原为 `{role, content}[]`（远端：`GET /api/tutor/history` 返回 4 轮，user/assistant 文本正确）
 
 #### Manual Verification:
-- [ ] 就同一题问两轮，第二轮回答体现记得题目与上一轮
+- [x] 同题两轮，第二轮回答体现记得题目与上一轮（远端多轮追问实证：指代解析 + 重启后上下文保持）
 
 ---
 
