@@ -175,17 +175,17 @@ class AiService {
 - [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
 - [x] SDK API 归属已核实（本地读 .d.ts + 远端 tsc）：`ModelRuntime.registerProvider` 连 Key 内存注册可行；`getModel` 取模型成功；`createAgentSession({modelRuntime,model,noTools:"all"})` 类型通过
 - [x] provider CRUD 存 provider+Key 后 `GET /api/models` 列出该模型（远端接口测通过）
-- [ ] `runOnce()` 返回非空模型文本（**待真实可用 Key**：上线后前端配置真实 provider 再跑 `verify.js`）
-- [ ] `createTutorSession()` 在 `$DATA_DIR/sessions/` 生成 `.jsonl`（**待真实 Key**，随 Phase 5 端到端一并验）
-- [ ] `streamPrompt` 回调被多次触发（**待真实 Key**，随 Phase 5 验）
+- [x] `runOnce()` 返回非空模型文本（远端 `verify.js` + DeepSeek 真实 Key：返回 "2。"）
+- [x] `createTutorSession()` 在 `$DATA_DIR/sessions/` 生成 `.jsonl`（远端 `verify.js` 确认生成）
+- [x] `streamPrompt` 回调被多次触发（远端 `verify.js`：text_delta 触发 120 次，真流式）
 - [x] Key 泄漏检查（评审 #9）：响应体只返回 `configured`；DB 中明文 Key count=0（远端 `sqlite3` 直查确认）；无 models.json 文件，Key 仅内存 + SQLite 密文
 - [x] `GET /api/models` 返回 provider/model 列表、`providers` CRUD 可增删改（远端接口测通过；`POST /api/settings/model` 切换待有第二个 provider 时验）
-- [ ] `secretBox` 单测：加密后密文 ≠ 明文，解密可还原；`APP_SECRET` 变更后旧密文解密失败给可读错误
+- [x] `secretBox` 单测：6 测全过（远端 vitest：密文≠明文、往返还原、损坏密文/密钥变更报错）
 
 #### Manual Verification:
 - [ ] 前端存的 provider 切换后 `runOnce` 用新 provider（模型可切换）
 - [x] `providers` 表 Key 列为密文（远端 `sqlite3` 直查：`iv:tag:ciphertext` 格式，非明文）
-- [ ] JSONL 文件内容为多轮 typed entry（会话历史成立）
+- [x] JSONL 文件内容为多轮 typed entry（远端确认 5 条：session/model_change/thinking_level_change/2×message）
 
 ---
 
