@@ -76,8 +76,8 @@ export function parseFileBuffer(filename: string, buf: Buffer): QuestionDraft[] 
   if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
     const wb = XLSX.read(buf, { type: 'buffer' });
     const sheetName = wb.SheetNames[0];
-    if (!sheetName) throw new Error('Excel 无有效工作表');
-    const sheet = wb.Sheets[sheetName];
+    const sheet = sheetName ? wb.Sheets[sheetName] : undefined;
+    if (!sheet) throw new Error('Excel 无有效工作表');
     const records = XLSX.utils.sheet_to_json<FlatRow>(sheet, { defval: '' });
     return validateDrafts(records.map(flatRowToRaw), 'file');
   }
