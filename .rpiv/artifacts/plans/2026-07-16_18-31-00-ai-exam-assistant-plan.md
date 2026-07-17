@@ -383,14 +383,14 @@ POST /api/insights/analyze  { bankId? } (SSE)
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 运行环境 `git pull` 后 `docker compose up --build -d` 两容器 healthy：`docker compose ps` 显示 healthy
-- [ ] SSE 经 Nginx 仍逐块到达（curl `-N` 打到 `web` 端口 `/api/tutor/explain` 收到多帧）
-- [ ] 持久化：`docker compose down && docker compose up -d` 后数据仍在，且**已配 provider 的 Key 仍可解密可用**（`sqlite3` 查 count + 重启后讲解仍工作）
-- [ ] 镜像不含任何 Key：`docker history` + 镜像内 `grep` 无模型 Key、无 `APP_SECRET` 明文
+- [x] 运行环境 `git pull` 后 `docker compose up --build -d` 两容器 healthy（远端：`docker compose ps` 两容器均 `(healthy)`；Docker Hub 直连超时，经 daocloud 镜像拉 node:22-bookworm(-slim)/nginx:1.27-alpine 并 retag）
+- [x] SSE 经 Nginx 仍逐块到达（经 `web` 端口 8092 打 `/api/tutor/explain` 收到 352 帧 `event: delta`，非整段）
+- [x] 持久化：`docker compose down && up -d` 后 provider+bank 仍在，且**已配 Key 仍可解密可用**（重启后 `configured=true`，直接跑 explain 得 619 帧——卷内 `.app_secret` 持久）
+- [x] 镜像不含任何 Key：`docker history` grep 模型 Key/`APP_SECRET=` 命中 0；镜像内 `grep -rl <key> /app` 无匹配；`/app/data` 在镜像内为空（数据仅在卷）
 
 #### Manual Verification:
-- [ ] 浏览器访问 `web` 端口：先在设置页配 provider，再完成完整端到端闭环
-- [ ] `deploy/README.md` 的 SSH + git pull + compose 步骤可照做复现（含 provider 需在页面配置的说明）
+- [ ] 浏览器访问 `web` 端口：先在设置页配 provider，再完成完整端到端闭环（**待你浏览器手测**：远端 `http://<IP>:8092`，容器已在跑；接口层已经 Nginx 全验）
+- [ ] `deploy/README.md` 的 SSH + git pull + compose 步骤可照做复现（已写，含 provider 需在页面配置的说明；**注**：该环境 Docker Hub 需镜像代理， README 故障排查已提及端口冲突，镜像拉取可需配 mirror）
 
 ---
 
