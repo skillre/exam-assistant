@@ -1,9 +1,12 @@
 import Fastify from 'fastify';
+import multipart from '@fastify/multipart';
 import { getDb } from './db/index.js';
 import { DATA_DIR } from './config/paths.js';
 import { AiService } from './ai/AiService.js';
 import { registerProviderRoutes } from './routes/providers.js';
 import { registerModelRoutes } from './routes/models.js';
+import { registerImportRoutes } from './routes/import.js';
+import { registerQuizRoutes } from './routes/quiz.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -16,12 +19,17 @@ async function main(): Promise<void> {
 
   const app = Fastify({ logger: true });
 
+  // 文件导入需 multipart（Phase 3 parse-file）。限制 5MB。
+  await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } });
+
   app.get('/api/health', async () => ({ ok: true, dataDir: DATA_DIR }));
 
   registerProviderRoutes(app, ai);
   registerModelRoutes(app, ai);
+  registerImportRoutes(app, ai);
+  registerQuizRoutes(app);
 
-  // 后续 phase 在此注册 routes（import / quiz / tutor / insights）
+  // 后续 phase 在此注册 routes（tutor / insights）
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
 }
