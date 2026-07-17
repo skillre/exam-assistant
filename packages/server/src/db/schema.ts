@@ -1,6 +1,8 @@
--- AI 原生考试助手 — SQLite schema（6 表）
--- 外键级联删除依赖 PRAGMA foreign_keys=ON（在 db/index.ts 连接时开启）
+// AI 原生考试助手 — SQLite schema（6 表）。
+// 以 TS 常量承载 DDL：单一真相源，tsc 编译后仍可用（避免 .sql 不被拷进 dist）。
+// 外键级联删除依赖 PRAGMA foreign_keys=ON（在 db/index.ts 连接时开启）。
 
+export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS banks (          -- 题库
   id         TEXT PRIMARY KEY,
   name       TEXT NOT NULL,
@@ -31,7 +33,7 @@ CREATE TABLE IF NOT EXISTS attempts (       -- 做题记录
 CREATE TABLE IF NOT EXISTS tutor_sessions ( -- 答疑会话（DEC-7：只存 JSONL 路径引用）
   id          TEXT PRIMARY KEY,
   question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  jsonl_path  TEXT NOT NULL,                -- ${DATA_DIR}/sessions/xxx.jsonl
+  jsonl_path  TEXT NOT NULL,                -- \${DATA_DIR}/sessions/xxx.jsonl
   created_at  INTEGER NOT NULL
 );
 
@@ -53,3 +55,4 @@ CREATE TABLE IF NOT EXISTS app_settings (   -- 单实例全局设置：当前激
 CREATE INDEX IF NOT EXISTS idx_questions_bank ON questions(bank_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_question ON attempts(question_id);
 CREATE INDEX IF NOT EXISTS idx_tutor_question ON tutor_sessions(question_id);
+`;
