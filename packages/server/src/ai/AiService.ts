@@ -76,7 +76,7 @@ export class AiService {
         if (e.type === 'message_update') {
           const ev = e.assistantMessageEvent;
           if (ev.type === 'text_delta') out += ev.delta;
-          else if (ev.type === 'error') streamError = ev.errorMessage ?? '模型返回错误';
+          else if (ev.type === 'error') streamError = ev.error?.errorMessage ?? '模型返回错误';
         }
       });
       await session.prompt(buildSingleTurn(systemPrompt, userPrompt));
@@ -140,7 +140,7 @@ export class AiService {
       if (e.type === 'message_update') {
         const ev = e.assistantMessageEvent;
         if (ev.type === 'text_delta') onDelta(ev.delta);
-        else if (ev.type === 'error') streamError = ev.errorMessage ?? '模型返回错误';
+        else if (ev.type === 'error') streamError = ev.error?.errorMessage ?? '模型返回错误';
       }
     });
     try {
