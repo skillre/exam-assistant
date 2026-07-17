@@ -71,14 +71,20 @@ export class AiService {
     });
     try {
       let out = '';
+      let streamError: string | undefined;
       const unsub = session.subscribe((e) => {
-        if (e.type === 'message_update' && e.assistantMessageEvent.type === 'text_delta') {
-          out += e.assistantMessageEvent.delta;
+        if (e.type === 'message_update') {
+          const ev = e.assistantMessageEvent;
+          if (ev.type === 'text_delta') out += ev.delta;
+          else if (ev.type === 'error') streamError = ev.errorMessage ?? '模型返回错误';
         }
       });
       await session.prompt(buildSingleTurn(systemPrompt, userPrompt));
       unsub();
-      return out.trim();
+      if (streamError) throw new Error(`模型调用失败：${streamError}`);
+      const text = out.trim();
+      if (!text) throw new Error('模型返回空内容（可能是 API Key 无效或额度不足）');
+      return text;
     } finally {
       session.dispose();
     }
@@ -129,9 +135,12 @@ export class AiService {
     prompt: string,
     onDelta: (chunk: string) => void,
   ): Promise<void> {
+    let streamError: string | undefined;
     const unsub = session.subscribe((e) => {
-      if (e.type === 'message_update' && e.assistantMessageEvent.type === 'text_delta') {
-        onDelta(e.assistantMessageEvent.delta);
+      if (e.type === 'message_update') {
+        const ev = e.assistantMessageEvent;
+        if (ev.type === 'text_delta') onDelta(ev.delta);
+        else if (ev.type === 'error') streamError = ev.errorMessage ?? '模型返回错误';
       }
     });
     try {
@@ -139,6 +148,7 @@ export class AiService {
     } finally {
       unsub();
     }
+    if (streamError) throw new Error(`模型调用失败：${streamError}`);
   }
 
   /** GET /api/models 用：列出所有已配置 provider 的模型 */
