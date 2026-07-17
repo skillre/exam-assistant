@@ -7,6 +7,7 @@ import { registerProviderRoutes } from './routes/providers.js';
 import { registerModelRoutes } from './routes/models.js';
 import { registerImportRoutes } from './routes/import.js';
 import { registerQuizRoutes } from './routes/quiz.js';
+import { registerTutorRoutes } from './routes/tutor.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -28,8 +29,9 @@ async function main(): Promise<void> {
   registerModelRoutes(app, ai);
   registerImportRoutes(app, ai);
   registerQuizRoutes(app);
+  registerTutorRoutes(app, ai);
 
-  // 后续 phase 在此注册 routes（tutor / insights）
+  // 后续 phase 在此注册 routes（insights）
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
 }

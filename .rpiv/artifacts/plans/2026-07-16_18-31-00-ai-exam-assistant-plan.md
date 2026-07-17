@@ -210,13 +210,13 @@ POST /api/import/commit       { bankId?, bankName?, questions } → { bankId, co
 
 #### Automated Verification:
 - [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
-- [ ] `parse-text` 接口测：含 3 题混合文本返回 3 草稿（**待真实可用 Key**——测试 Key 已 401 失效；错误路径已验证：401 会以清晰错误返回，非空/非 500）
+- [x] `parse-text` 接口测：含 3 题混合文本返回 3 草稿（远端实测通过：AI 正确解析单选/多选/判断，answer 形态与 index 全部合法）
 - [x] `parse-file`：JSON 文件导入 3 题（single/multiple/boolean）正确解析（远端接口测通过；CSV/Excel 走同一 `validateDrafts` 校验路径）
 - [x] `commit` 后 `questions` 表出现对应行（远端：commit 返回 count=3，`GET /api/banks/:id/questions` 返回 3 题，字段/answer 正确）
 - [x] 畸形输入返回 4xx（远端：缺字段 400，题库不存在 404，非 500）
 
 #### Manual Verification:
-- [ ] 粘贴真实一段题目文本，解析结果可读且字段正确（**待真实 Key**，随 Phase 8 端到端一并验）
+- [x] 粘贴真实一段题目文本，解析结果可读且字段正确（远端实测：混合文本 → 3 结构化题目，正确识别 HTML/CSS 非编程语言）
 - [ ] 文件模板文档清晰可用（CSV/Excel 列约定 type|stem|options|answer|explanation|tags，options/tags 用 `|` 分隔——待写入 deploy/README 或导入页说明）
 
 ---
