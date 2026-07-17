@@ -355,15 +355,16 @@ POST /api/insights/analyze  { bankId? } (SSE)
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 前端构建通过：`pnpm --filter client build`
-- [ ] 类型检查通过：`pnpm -r exec tsc --noEmit`
-- [ ] 删除题库后对应 JSONL 被清除：`ls $DATA_DIR/sessions/` 无孤儿（接口测 + ls 断言）
-- [ ] provider CRUD 接口测：新增→列表出现且 `configured:true`、Key 明文不在任何响应体（grep 响应断言，DEC-19）
+- [x] 前端构建通过：`pnpm --filter client build`（远端：41 模块转换，产出 dist/index.html+css+js，962ms）
+- [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
+- [x] 删除题库后对应 JSONL 被清除（远端：建库+题+答疑会话后 JSONL=1/tutor_sessions=1，DELETE 204 后 JSONL=0、questions/attempts/tutor_sessions 均 CASCADE 到 0）
+- [x] provider CRUD 接口测：新增→列表出现且 `configured:true`、Key 明文不在任何响应体（Phase 2 已验；本阶段经 vite 代理再验一次 CRUD+listModels）
+- [x] 全前端 API 路径经 vite 代理端到端跑通（providers/models/import/commit/banks/questions/grade/explain-SSE-311帧/wrong 均 OK）
 
 #### Manual Verification:
-- [ ] 设置页新增一个 provider（填 baseUrl/api/模型/Key）→ 保存 → 选中其模型 → 讲解可用
-- [ ] 端到端手测：配 provider → 导入→刷完→每题流式讲解→错题追问→错题本重做→看学情报告
-- [ ] 编辑 provider 不重填 Key 时旧 Key 仍有效；重填则更新
+- [ ] 设置页新增一个 provider（填 baseUrl/api/模型/Key）→ 保存 → 选中其模型 → 讲解可用（**待你在浏览器实际点击；接口层已全部验证**）
+- [ ] 端到端手测：配 provider → 导入→刷完→每题流式讲解→错题追问→错题本重做→看学情报告（待浏览器手测）
+- [ ] 编辑 provider 不重填 Key 时旧 Key 仍有效；重填则更新（后端逻辑 Phase 2 已验；前端表单留空=不改已实现）
 - [ ] 浏览器 Network 面板：任何响应体都不含 API Key 明文（只见 `configured`）
 
 ---
