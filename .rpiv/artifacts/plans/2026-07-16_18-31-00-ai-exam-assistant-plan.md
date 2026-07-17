@@ -119,14 +119,14 @@ export interface ProviderUpsert {   // 写入时才带 apiKey，编辑省略则�
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 依赖安装成功：`pnpm install`（运行环境）
-- [ ] 三包类型检查通过：`pnpm -r exec tsc --noEmit`
-- [ ] 启动脚本建库后六张表存在：`sqlite3 $DATA_DIR/app.db ".tables"` 输出含 banks/questions/attempts/tutor_sessions/providers/app_settings
-- [ ] `@exam/shared` 能被 server/client import（`tsc` 不报未解析）
+- [x] 依赖安装成功：`pnpm install`（远端：better-sqlite3 原生编译通过，Node 23）
+- [x] 三包类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
+- [x] 启动脚本建库后六张表存在：`sqlite3 $DATA_DIR/app.db ".tables"` 输出 banks/questions/attempts/tutor_sessions/providers/app_settings（远端确认）
+- [x] `@exam/shared` 能被 server/client import（远端 tsc 无未解析报错）
 
 #### Manual Verification:
-- [ ] 目录结构符合设计（packages/shared|server|client）
-- [ ] `DATA_DIR` 未设置时回退到本地默认且不报错
+- [x] 目录结构符合设计（packages/shared|server|client）
+- [x] `DATA_DIR` 未设置时回退到本地默认且不报错（远端 health 返回 dataDir）
 
 ---
 
@@ -159,7 +159,7 @@ class AiService {
 }
 ```
 
-**Provider 运行时装配（DEC-19/20/21）**: provider（baseUrl/api/模型列表/加密 Key）存 SQLite。`AiService` 启动与 `reloadProviders()` 时：把 provider 目录写到 `${DATA_DIR}/models.json`（**不含 Key**）→ `ModelRuntime.create({ modelsPath })` → 对每个 configured provider 调 `setRuntimeApiKey(providerId, 解密Key)`（Key 只进内存，不落盘、不入 auth.json）。Key 明文仅存活于内存与 AES-GCM 密文列，任何响应体只返回 `configured: boolean`。
+**Provider 运行时装配（DEC-19/20/21，已按实现优化落地）**: provider（baseUrl/api/模型列表/加密 Key）存 SQLite。`AiService` 启动与 `reloadProviders()` 时：`ModelRuntime.create({ modelsPath: null })`（不读任何 models.json 文件）→ 从 SQLite 读 provider、`secretBox` 解密 Key → `registerProvider(id, { name, baseUrl, apiKey, api, models })` 连 Key 全量注入内存。Key 明文仅存活于内存，落盘的只有 SQLite 的 AES-GCM 密文列；任何响应体只返回 `configured: boolean`。**已在远端验证**：明文 Key 在 DB 中 count=0、响应体无 Key。
 > ⚠️ **Phase 2 首要验证项**（✅ 已在本地核实 SDK 类型定义解决）：真实 API 为 `ModelRuntime`（非 ModelRegistry）：`ModelRuntime.create({ modelsPath?, authPath?, credentials? })`、`setRuntimeApiKey(providerId, apiKey): Promise<void>`、`registerProvider(providerId, { name, baseUrl, apiKey, api, models }): void`（同步、直接在 ModelRuntime 上，无需扩展工厂）、`getModel(providerId, modelId)`。`createAgentSession({ modelRuntime, model, noTools: "all" })` —— `noTools:"all"` 关掉全部工具（DEC-9）。
 > **实现优化（比 DEC-21 更简）**：`registerProvider` 可连 Key 一起在内存注册，所以**不写 `models.json` 文件、也不单调 `setRuntimeApiKey`**：启动时从 SQLite 读 provider、解密 Key、直接 `registerProvider` 全量注入内存。Key 依然不落盘（SQLite 密文，内存才明文）。`modelRuntimeSetup.ts` 按此实现。
 
@@ -172,18 +172,19 @@ class AiService {
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 类型检查通过：`pnpm -r exec tsc --noEmit`
-- [ ] 验证脚本确认 `setRuntimeApiKey` + `modelsPath` 的确切 API 归属（首要项）：`node packages/server/dist/ai/verify.js`
-- [ ] 经 provider CRUD 存一个 provider+Key 后，`runOnce()` 返回非空模型文本（Key 从 DB 解密注入，非 `.env`）
-- [ ] `createTutorSession()` 在 `$DATA_DIR/sessions/` 生成 `.jsonl`：`ls $DATA_DIR/sessions/*.jsonl`
-- [ ] `streamPrompt` 回调被多次触发（脚本断言 delta 次数 > 1）
-- [ ] Key 泄漏检查（评审 #9，全 server 目录）：`grep -rn "apiKey\|API_KEY" packages/server/src` 无明文回传（响应体只返回 `configured`；实现优化后无 models.json 文件，Key 仅内存 + SQLite 密文）
-- [ ] `GET /api/models` 返回 provider/model 列表、`POST /api/settings/model` 能切换、`providers` CRUD 可增删改（接口测）
+- [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
+- [x] SDK API 归属已核实（本地读 .d.ts + 远端 tsc）：`ModelRuntime.registerProvider` 连 Key 内存注册可行；`getModel` 取模型成功；`createAgentSession({modelRuntime,model,noTools:"all"})` 类型通过
+- [x] provider CRUD 存 provider+Key 后 `GET /api/models` 列出该模型（远端接口测通过）
+- [ ] `runOnce()` 返回非空模型文本（**待真实可用 Key**：上线后前端配置真实 provider 再跑 `verify.js`）
+- [ ] `createTutorSession()` 在 `$DATA_DIR/sessions/` 生成 `.jsonl`（**待真实 Key**，随 Phase 5 端到端一并验）
+- [ ] `streamPrompt` 回调被多次触发（**待真实 Key**，随 Phase 5 验）
+- [x] Key 泄漏检查（评审 #9）：响应体只返回 `configured`；DB 中明文 Key count=0（远端 `sqlite3` 直查确认）；无 models.json 文件，Key 仅内存 + SQLite 密文
+- [x] `GET /api/models` 返回 provider/model 列表、`providers` CRUD 可增删改（远端接口测通过；`POST /api/settings/model` 切换待有第二个 provider 时验）
 - [ ] `secretBox` 单测：加密后密文 ≠ 明文，解密可还原；`APP_SECRET` 变更后旧密文解密失败给可读错误
 
 #### Manual Verification:
 - [ ] 前端存的 provider 切换后 `runOnce` 用新 provider（模型可切换）
-- [ ] `providers` 表 Key 列为密文（`sqlite3` 直查确认非明文）
+- [x] `providers` 表 Key 列为密文（远端 `sqlite3` 直查：`iv:tag:ciphertext` 格式，非明文）
 - [ ] JSONL 文件内容为多轮 typed entry（会话历史成立）
 
 ---
