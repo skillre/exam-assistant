@@ -14,6 +14,7 @@
 import { existsSync } from 'node:fs';
 import { ModelRuntime, SessionManager, createAgentSession } from '@earendil-works/pi-coding-agent';
 import { SESSIONS_DIR } from '../config/paths.js';
+import { toSdkModel } from './sdkModel.js';
 
 async function main() {
   const providerId = process.env.VERIFY_PROVIDER_ID ?? 'verify-provider';
@@ -35,7 +36,7 @@ async function main() {
     baseUrl,
     apiKey,
     api: api as never,
-    models: [{ id: modelId, name: modelId }],
+    models: [toSdkModel(modelId, modelId)],
   });
 
   const model = runtime.getModel(providerId, modelId);

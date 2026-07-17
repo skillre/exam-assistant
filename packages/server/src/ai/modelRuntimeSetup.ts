@@ -1,5 +1,6 @@
 import { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import { providerRepo } from '../repositories/providerRepo.js';
+import { toSdkModel } from './sdkModel.js';
 
 // DEC-21（实现优化）：不写 models.json 文件、也不用 setRuntimeApiKey。
 // 直接从 SQLite 读 provider（解密 Key）→ ModelRuntime.registerProvider 全量注册到内存。
@@ -20,7 +21,7 @@ export async function buildModelRuntime(): Promise<ModelRuntime> {
       baseUrl: p.baseUrl,
       apiKey: p.apiKey, // 仅内存
       api: p.api as never, // 'openai-completions' 等，运行时由用户配置
-      models: p.models.map((m) => ({ id: m.id, name: m.name })),
+      models: p.models.map((m) => toSdkModel(m.id, m.name)),
     });
   }
 
