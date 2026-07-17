@@ -81,7 +81,8 @@ export class AiService {
       });
       await session.prompt(buildSingleTurn(systemPrompt, userPrompt));
       unsub();
-      if (streamError) throw new Error(`模型调用失败：${streamError}`);
+      const err = streamError ?? lastMessageError(session);
+      if (err) throw new Error(`模型调用失败：${err}`);
       const text = out.trim();
       if (!text) throw new Error('模型返回空内容（可能是 API Key 无效或额度不足）');
       return text;
@@ -148,7 +149,8 @@ export class AiService {
     } finally {
       unsub();
     }
-    if (streamError) throw new Error(`模型调用失败：${streamError}`);
+    const err = streamError ?? lastMessageError(session);
+    if (err) throw new Error(`模型调用失败：${err}`);
   }
 
   /** GET /api/models 用：列出所有已配置 provider 的模型 */
@@ -176,4 +178,17 @@ export class AiService {
 /** 一次性调用把 system + user 合成单条 prompt（inMemory 会话无独立 system 通道时的简化） */
 function buildSingleTurn(systemPrompt: string, userPrompt: string): string {
   return `${systemPrompt}\n\n---\n\n${userPrompt}`;
+}
+
+/**
+ * 兜底错误检测：模型 HTTP 错误（如 401/额度不足）不一定触发 stream 的 error 事件，
+ * 而是落在最后一条 assistant 消息的 stopReason='error' + errorMessage 上。
+ */
+function lastMessageError(session: AgentSession): string | undefined {
+  const msgs = session.messages;
+  const last = msgs[msgs.length - 1] as { role?: string; stopReason?: string; errorMessage?: string } | undefined;
+  if (last && last.role === 'assistant' && last.stopReason === 'error') {
+    return last.errorMessage ?? '模型返回错误';
+  }
+  return undefined;
 }
