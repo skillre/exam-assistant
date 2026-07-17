@@ -1,0 +1,45 @@
+# 双容器：web(Nginx 托前端 + 反代 /api) + api(Fastify)。
+# 数据（SQLite / JSONL 会话 / 运行时 models.json / .app_secret）全在 app-data 命名卷（DEC-18）。
+# 模型 Key 绝不在此文件/镜像/Git，只经前端存进卷内 SQLite 密文（DEC-19）。
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    environment:
+      # APP_SECRET 用于加密卷内 provider Key（非模型 Key）。
+      # 缺省时 api 首启在卷内生成 .app_secret 并持久化，容器重建仍可解密旧 Key。
+      APP_SECRET: ${APP_SECRET:-}
+      DATA_DIR: /app/data
+      PORT: "3000"
+    volumes:
+      - app-data:/app/data
+    restart: unless-stopped
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  app-data:

@@ -1,0 +1,47 @@
+# ── 构建阶段：安装依赖（含 better-sqlite3 原生编译）+ tsc 编译 ──
+FROM node:22-bookworm AS builder
+WORKDIR /app
+
+# corepack 启用与 lockfile 一致的 pnpm
+RUN corepack enable
+
+# 先拷贝 workspace 清单 + lockfile，最大化利用层缓存
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/server/package.json packages/server/
+COPY packages/client/package.json packages/client/
+
+# 全量安装（含 devDeps，tsc 需要）。better-sqlite3 在此原生编译。
+RUN pnpm install --frozen-lockfile
+
+# 拷贝源码并编译 server（shared 为纯类型，被 tsc 擦除，无需单独构建）
+COPY packages/shared packages/shared
+COPY packages/server packages/server
+RUN pnpm --filter @exam/server build
+
+# 剪掉 devDeps，只留生产依赖（better-sqlite3 原生产物保留）
+RUN pnpm --filter @exam/server prune --prod || pnpm install --prod --frozen-lockfile
+
+# ── 运行阶段：仅带运行所需（同基座保证 better-sqlite3 ABI 一致）──
+FROM node:22-bookworm-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV DATA_DIR=/app/data
+ENV PORT=3000
+
+# 拷贝 workspace 结构 + 依赖 + 编译产物
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=builder /app/packages/shared ./packages/shared
+COPY --from=builder /app/packages/server/package.json ./packages/server/package.json
+COPY --from=builder /app/packages/server/node_modules ./packages/server/node_modules
+COPY --from=builder /app/packages/server/dist ./packages/server/dist
+
+# 数据卷挂载点（DEC-18）：SQLite + JSONL 会话 + 运行时 models.json
+RUN mkdir -p /app/data && chown -R node:node /app
+VOLUME /app/data
+USER node
+EXPOSE 3000
+
+CMD ["node", "packages/server/dist/index.js"]
