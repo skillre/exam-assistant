@@ -1,8 +1,10 @@
 import type { FastifyInstance } from 'fastify';
+import { rm } from 'node:fs/promises';
 import type { GradeRequest, GradeResponse } from '@exam/shared';
 import { bankRepo } from '../repositories/bankRepo.js';
 import { questionRepo } from '../repositories/questionRepo.js';
 import { attemptRepo } from '../repositories/attemptRepo.js';
+import { tutorSessionRepo } from '../repositories/tutorSessionRepo.js';
 import { gradeQuestion } from '../grading/grade.js';
 
 // Phase 4：刷题闭环。判分纯程序、确定性（DEC-3），每次作答落 attempt。
@@ -40,4 +42,18 @@ export function registerQuizRoutes(app: FastifyInstance): void {
 
   // 错题本：做错过的题（去重到题粒度）
   app.get('/api/quiz/wrong', async () => attemptRepo.listWrongQuestions());
+
+  // 删除题库：先删该库答疑 JSONL 文件（避免孤儿），再删库（外键 CASCADE
+  // 清 questions/attempts/tutor_sessions 行，DEC-13）。
+  app.delete<{ Params: { id: string } }>('/api/banks/:id', async (req, reply) => {
+    const bank = bankRepo.get(req.params.id);
+    if (!bank) return reply.code(404).send({ error: '题库不存在' });
+
+    const jsonlPaths = tutorSessionRepo.listJsonlPathsByBank(req.params.id);
+    await Promise.all(
+      jsonlPaths.map((p) => rm(p, { force: true }).catch(() => {/* 文件缺失忽略 */})),
+    );
+    bankRepo.remove(req.params.id);
+    return reply.code(204).send();
+  });
 }

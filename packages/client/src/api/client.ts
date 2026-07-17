@@ -38,6 +38,7 @@ export const api = {
   // ── 题库 / 题目 ──
   listBanks: () => req<Bank[]>('/api/banks'),
   listQuestions: (bankId: string) => req<Question[]>(`/api/banks/${bankId}/questions`),
+  deleteBank: (bankId: string) => req<void>(`/api/banks/${bankId}`, { method: 'DELETE' }),
 
   // ── 导入 ──
   parseText: (text: string) =>

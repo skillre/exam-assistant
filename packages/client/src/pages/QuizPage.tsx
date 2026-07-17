@@ -50,6 +50,21 @@ export function QuizPage() {
     setIdx((i) => Math.max(i - 1, 0));
   }
 
+  async function removeBank() {
+    if (!bankId) return;
+    if (!confirm('删除该题库？其题目、作答记录和答疑历史都会一并清除。')) return;
+    try {
+      await api.deleteBank(bankId);
+      setBanks((bs) => bs.filter((b) => b.id !== bankId));
+      setBankId('');
+      setQuestions([]);
+      setGraded(null);
+      setIdx(0);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   return (
     <div>
       <h1>刷题</h1>
@@ -57,14 +72,21 @@ export function QuizPage() {
 
       <div className="card">
         <label>选择题库</label>
-        <select value={bankId} onChange={(e) => loadBank(e.target.value)}>
-          <option value="">— 请选择 —</option>
-          {banks.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        <div className="row">
+          <select value={bankId} onChange={(e) => loadBank(e.target.value)} style={{ flex: 1 }}>
+            <option value="">— 请选择 —</option>
+            {banks.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+          {bankId && (
+            <button className="btn danger" onClick={removeBank}>
+              删除题库
+            </button>
+          )}
+        </div>
         {banks.length === 0 && <p className="muted">还没有题库，先去「导入」页添加题目。</p>}
       </div>
 
