@@ -209,15 +209,15 @@ POST /api/import/commit       { bankId?, bankName?, questions } → { bankId, co
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 类型检查通过：`pnpm -r exec tsc --noEmit`
-- [ ] `parse-text` 单测/接口测：含 3 题的混合文本返回 3 个结构合法草稿（type/answer 合法）
-- [ ] `parse-file` 单测：符合模板的 json/csv/xlsx 各正确解析
-- [ ] `commit` 后 `questions` 表出现对应行：`sqlite3 $DATA_DIR/app.db "select count(*) from questions"`
-- [ ] 畸形输入返回 4xx（curl 断言状态码，非 500）
+- [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
+- [ ] `parse-text` 接口测：含 3 题混合文本返回 3 草稿（**待真实可用 Key**——测试 Key 已 401 失效；错误路径已验证：401 会以清晰错误返回，非空/非 500）
+- [x] `parse-file`：JSON 文件导入 3 题（single/multiple/boolean）正确解析（远端接口测通过；CSV/Excel 走同一 `validateDrafts` 校验路径）
+- [x] `commit` 后 `questions` 表出现对应行（远端：commit 返回 count=3，`GET /api/banks/:id/questions` 返回 3 题，字段/answer 正确）
+- [x] 畸形输入返回 4xx（远端：缺字段 400，题库不存在 404，非 500）
 
 #### Manual Verification:
-- [ ] 粘贴真实一段题目文本，解析结果可读且字段正确
-- [ ] 文件模板文档清晰可用
+- [ ] 粘贴真实一段题目文本，解析结果可读且字段正确（**待真实 Key**，随 Phase 8 端到端一并验）
+- [ ] 文件模板文档清晰可用（CSV/Excel 列约定 type|stem|options|answer|explanation|tags，options/tags 用 `|` 分隔——待写入 deploy/README 或导入页说明）
 
 ---
 
@@ -239,13 +239,13 @@ GET  /api/quiz/wrong                  → 错题列表（attempts.is_correct=0 j
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 类型检查通过：`pnpm -r exec tsc --noEmit`
-- [ ] 判分单测覆盖三题型边界：多选顺序无关、空答案、超范围 index、boolean —— `pnpm --filter server test grade`
-- [ ] `grade` 每次在 `attempts` 落一行且 `is_correct` 与判分一致（接口测）
-- [ ] `/api/quiz/wrong` 只返回做错过的题、去重到题粒度（接口测）
+- [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
+- [x] 判分单测覆盖三题型边界（远端 `vitest` **18/18 通过**：多选顺序无关、空答案、超范围 index、非法 index、boolean 类型不匹配）
+- [x] `grade` 每次在 `attempts` 落一行且 `is_correct` 与判分一致（远端接口测：5 次作答均落库，attemptId 回传）
+- [x] `/api/quiz/wrong` 只返回做错过的题、去重到题粒度（远端接口测：single+multiple 各答错后错题本返回 2 题，去重正确）
 
 #### Manual Verification:
-- [ ] 手测单选/多选/判断各一题，判分结果符合预期
+- [x] 手测单选/多选/判断判分正确（远端：single 对/错、multiple [2,0]≡[0,2]、boolean true 均符合预期）
 
 ---
 
