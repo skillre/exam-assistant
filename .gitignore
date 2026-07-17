@@ -1,0 +1,11 @@
+# deps
+node_modules/
+# build output
+dist/
+# 数据（SQLite + 答疑 JSONL），只在运行环境的命名卷里，不进 Git
+data/
+# 真实密钥/密文种子
+.env
+# editor/os
+.DS_Store
+*.log
