@@ -62,8 +62,9 @@ describe('LearningDataCollector.collect', () => {
     expect(tags).toContain('未分类');
     expect(tags).not.toContain('几何');
     // 降序：第一个的 wrong >= 最后一个的 wrong
-    expect(snap.weakTags[0].wrong).toBeGreaterThanOrEqual(
-      snap.weakTags[snap.weakTags.length - 1].wrong,
+    expect(snap.weakTags.length).toBeGreaterThan(0);
+    expect(snap.weakTags[0]!.wrong).toBeGreaterThanOrEqual(
+      snap.weakTags[snap.weakTags.length - 1]!.wrong,
     );
     const algebra = snap.weakTags.find((t) => t.tag === '代数')!;
     expect(algebra.wrong).toBe(2);
