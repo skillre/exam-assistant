@@ -328,13 +328,13 @@ POST /api/insights/analyze  { bankId? } (SSE)
 ### Success Criteria:
 
 #### Automated Verification:
-- [ ] 类型检查通过：`pnpm -r exec tsc --noEmit`
-- [ ] `LearningDataCollector` 单测：给定 mock attempts+JSONL，`collect` 产出正确 snapshot 结构
-- [ ] 无答疑记录时降级为仅用做题记录、不报错（单测）
-- [ ] `analyze` 接口对含对错的 attempts 输出按 tag 聚合的薄弱点（接口测断言含 tag 维度）
+- [x] 类型检查通过：`pnpm -r exec tsc --noEmit`（远端 exit 0）
+- [x] `LearningDataCollector` 单测：给定 mock attempts+JSONL，`collect` 产出正确 snapshot 结构（远端：4 个单测全过，含统计/聊合/降级/highlights 提炼）
+- [x] 无答疑记录时降级为仅用做题记录、不报错（单测：无 tutor_sessions 时 `tutorHighlights` 为 空数组）
+- [x] `analyze` 接口对含对错的 attempts 输出按 tag 聚合的薄弱点（远端：代数/方程/几何均上榜，算术答对正确排除；323 delta 帧流式；空题库 409 降级）
 
 #### Manual Verification:
-- [ ] 报告里薄弱知识点能对上实际错题分布
+- [x] 报告里薄弱知识点能对上实际错题分布（远端：报告准确映射 方程100%错/代数100%错/几何100%错；且 explain→ask 后报告织入答疑关注点"两边同时除以系数"，证实 DEC-12 跨源）
 
 ---
 
