@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { QuestionDraft } from '@exam/shared';
 import { api } from '../api/client.js';
 
-// 导入页：粘贴文本（AI 解析）或上传文件 → 预览草稿 → 提交到新题库。
+// 导入页：拖拽/选择文件（AI 解析或结构化）或粘贴文本 → 预览草稿 → 提交到新题库。
 export function ImportPage() {
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState<QuestionDraft[]>([]);
@@ -10,6 +10,7 @@ export function ImportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [dragOver, setDragOver] = useState(false);
 
   async function parseText() {
     if (!text.trim()) return;
@@ -31,10 +32,11 @@ export function ImportPage() {
     setLoading(true);
     setError('');
     setNotice('');
+    setDrafts([]);
     try {
       const r = await api.parseFile(file);
       setDrafts(r.questions);
-      if (r.questions.length === 0) setError('文件里没有解析出题目');
+      if (r.questions.length === 0) setError('文件里没有解析出题目，换个文件或格式再试');
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -110,20 +112,54 @@ export function ImportPage() {
       </div>
 
       <div className="card">
-        <h2>上传文件或粘贴文本</h2>
-        <label className="btn" style={{ margin: '0 0 12px' }}>
-          选择文件（txt / md / docx / csv / xlsx / json）
+        <h2>方式一：上传文件</h2>
+        <label
+          className={`dropzone${dragOver ? ' over' : ''}${loading ? ' disabled' : ''}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (!loading) setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            if (loading) return;
+            const f = e.dataTransfer.files?.[0];
+            if (f) parseFile(f);
+          }}
+        >
           <input
             type="file"
             accept=".txt,.md,.markdown,.docx,.csv,.xlsx,.xls,.json"
             style={{ display: 'none' }}
-            onChange={(e) => e.target.files?.[0] && parseFile(e.target.files[0])}
+            disabled={loading}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = ''; // 重置，否则再选同一文件不触发 onChange
+              if (f) parseFile(f);
+            }}
           />
+          {loading ? (
+            <div className="muted">处理中…（文档需 AI 识别，请稍候）</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>📄</div>
+              <div><strong>把文件拖到这里</strong>，或<strong>点此选择</strong></div>
+              <div className="muted" style={{ marginTop: 6, fontSize: 13 }}>
+                支持 txt / md / docx / csv / xlsx / json
+              </div>
+            </>
+          )}
         </label>
+      </div>
+
+      <div className="card">
+        <h2>方式二：粘贴文本</h2>
         <textarea
-          placeholder="…或把题目直接粘贴到这里，AI 会自动识别题干、选项、答案…"
+          placeholder="把题目文字直接粘贴到这里（含题干、选项、答案），AI 会自动识别…"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          disabled={loading}
         />
         <div className="row" style={{ marginTop: 10 }}>
           <button className="btn" onClick={parseText} disabled={loading || !text.trim()}>

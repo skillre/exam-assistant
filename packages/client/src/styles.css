@@ -139,6 +139,26 @@ label { display: block; margin: 10px 0 4px; color: var(--muted); font-size: 13px
 
 .field { margin-bottom: 6px; }
 
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 20px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:hover { border-color: var(--accent); }
+.dropzone.over {
+  border-color: var(--accent);
+  background: rgba(79,140,255,0.1);
+}
+.dropzone.disabled { cursor: default; opacity: 0.7; }
+
 /* select/input 复用 input 基样式；.input 作为显式类名别名 */
 .input {
   width: 100%;
