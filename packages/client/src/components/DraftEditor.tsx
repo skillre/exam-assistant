@@ -6,10 +6,11 @@ interface Props {
   errors: string[];
   onChange: (next: QuestionDraft) => void;
   onRemove: () => void;
+  tagSuggestions?: string[];
 }
 
 // v2 FR4.1/4.2/4.3：单条草稿的可编辑卡片。题干/选项/答案/题型/标签/解析均可改。
-export function DraftEditor({ draft, index, errors, onChange, onRemove }: Props) {
+export function DraftEditor({ draft, index, errors, onChange, onRemove, tagSuggestions }: Props) {
   function patch(p: Partial<QuestionDraft>) {
     onChange({ ...draft, ...p });
   }
@@ -120,6 +121,7 @@ export function DraftEditor({ draft, index, errors, onChange, onRemove }: Props)
 
       <label>知识点标签（逗号分隔）</label>
       <input
+        list={`tag-suggest-${index}`}
         value={(draft.tags ?? []).join(', ')}
         onChange={(e) =>
           patch({
@@ -130,6 +132,13 @@ export function DraftEditor({ draft, index, errors, onChange, onRemove }: Props)
           })
         }
       />
+      {tagSuggestions && tagSuggestions.length > 0 && (
+        <datalist id={`tag-suggest-${index}`}>
+          {tagSuggestions.map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
+      )}
 
       <label>解析（可选）</label>
       <textarea

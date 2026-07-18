@@ -38,6 +38,38 @@ export interface Bank {
   createdAt: number;
 }
 
+/** v2 题库管理：列表附带题目数 */
+export interface BankWithCount extends Bank {
+  questionCount: number;
+}
+
+// ── v2：题库/题目管理 API 契约 ──────────────────────
+export interface CreateBankRequest {
+  name: string;
+}
+export interface RenameBankRequest {
+  name: string;
+}
+/** 新增/编辑单题的载荷（等同一条草稿） */
+export type QuestionUpsert = QuestionDraft;
+
+export type MoveCopyOp = 'move' | 'copy';
+export interface MoveCopyRequest {
+  questionIds: string[];
+  targetBankId: string;
+  op: MoveCopyOp;
+}
+export type TagApplyMode = 'add' | 'replace';
+export interface ApplyTagsRequest {
+  questionIds: string[];
+  tags: string[];
+  mode: TagApplyMode;
+}
+/** 批量操作的通用回显：实际影响条数 */
+export interface AffectedCountResponse {
+  affected: number;
+}
+
 // ── 判分 API 契约 ───────────────────────────────────────────
 export interface GradeRequest {
   questionId: string;

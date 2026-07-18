@@ -7,6 +7,7 @@ import { registerProviderRoutes } from './routes/providers.js';
 import { registerModelRoutes } from './routes/models.js';
 import { registerImportRoutes } from './routes/import.js';
 import { registerQuizRoutes } from './routes/quiz.js';
+import { registerBankRoutes } from './routes/banks.js';
 import { registerTutorRoutes } from './routes/tutor.js';
 import { registerInsightsRoutes } from './routes/insights.js';
 
@@ -30,6 +31,7 @@ async function main(): Promise<void> {
   registerModelRoutes(app, ai);
   registerImportRoutes(app, ai);
   registerQuizRoutes(app);
+  registerBankRoutes(app);
   registerTutorRoutes(app, ai);
   registerInsightsRoutes(app, ai);
 

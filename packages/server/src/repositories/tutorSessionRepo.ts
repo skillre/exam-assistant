@@ -58,4 +58,12 @@ export const tutorSessionRepo = {
       .all(bankId) as { jsonl_path: string }[];
     return rows.map((r) => r.jsonl_path);
   },
+
+  /** 单题的答疑 JSONL 路径（删单题前清理孤儿文件） */
+  listJsonlPathsByQuestion(questionId: string): string[] {
+    const rows = db
+      .prepare('SELECT jsonl_path FROM tutor_sessions WHERE question_id = ?')
+      .all(questionId) as { jsonl_path: string }[];
+    return rows.map((r) => r.jsonl_path);
+  },
 };

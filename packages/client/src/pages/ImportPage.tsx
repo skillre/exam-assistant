@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { QuestionDraft } from '@exam/shared';
 import { api } from '../api/client.js';
 import { DraftEditor } from '../components/DraftEditor.js';
@@ -36,6 +36,11 @@ export function ImportPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    api.listTags().then(setTagSuggestions).catch(() => {});
+  }, []);
 
   const invalidCount = drafts.filter((d) => localIssues(d).length > 0).length;
 
@@ -226,6 +231,7 @@ export function ImportPage() {
               errors={localIssues(d)}
               onChange={(nd) => updateDraft(i, nd)}
               onRemove={() => removeDraft(i)}
+              tagSuggestions={tagSuggestions}
             />
           ))}
 

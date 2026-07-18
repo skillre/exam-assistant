@@ -30,6 +30,21 @@ export const bankRepo = {
     return { id, name, createdAt: now };
   },
 
+  /** 重命名。返回更新后的 Bank，不存在则 undefined。 */
+  rename(id: string, name: string): Bank | undefined {
+    const info = db.prepare('UPDATE banks SET name = ? WHERE id = ?').run(name, id);
+    if (info.changes === 0) return undefined;
+    return this.get(id);
+  },
+
+  /** 各题库的题目数（一次聚合，避免 N+1）。返回 bankId -> count 映射。 */
+  questionCounts(): Map<string, number> {
+    const rows = db
+      .prepare('SELECT bank_id, COUNT(*) AS n FROM questions GROUP BY bank_id')
+      .all() as { bank_id: string; n: number }[];
+    return new Map(rows.map((r) => [r.bank_id, r.n]));
+  },
+
   remove(id: string): boolean {
     // questions/attempts/tutor_sessions 经 ON DELETE CASCADE 一并清除（DEC-13）
     const info = db.prepare('DELETE FROM banks WHERE id = ?').run(id);

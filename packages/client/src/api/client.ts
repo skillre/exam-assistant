@@ -21,6 +21,11 @@ import type {
   LearningSnapshot,
   ValidateDraftsResponse,
   ConnTestResult,
+  BankWithCount,
+  QuestionUpsert,
+  MoveCopyRequest,
+  ApplyTagsRequest,
+  AffectedCountResponse,
 } from '@exam/shared';
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -47,6 +52,29 @@ export const api = {
   listBanks: () => req<Bank[]>('/api/banks'),
   listQuestions: (bankId: string) => req<Question[]>(`/api/banks/${bankId}/questions`),
   deleteBank: (bankId: string) => req<void>(`/api/banks/${bankId}`, { method: 'DELETE' }),
+
+  // ── v2：题库管理 ──
+  listBanksWithCounts: () => req<BankWithCount[]>('/api/banks/with-counts'),
+  listTags: () => req<string[]>('/api/tags'),
+  createBank: (name: string) =>
+    req<Bank>('/api/banks', { method: 'POST', body: JSON.stringify({ name }) }),
+  renameBank: (id: string, name: string) =>
+    req<Bank>(`/api/banks/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  addQuestion: (bankId: string, q: QuestionUpsert) =>
+    req<Question>(`/api/banks/${bankId}/questions`, { method: 'POST', body: JSON.stringify(q) }),
+  updateQuestion: (qid: string, q: QuestionUpsert) =>
+    req<Question>(`/api/questions/${qid}`, { method: 'PUT', body: JSON.stringify(q) }),
+  deleteQuestion: (qid: string) => req<void>(`/api/questions/${qid}`, { method: 'DELETE' }),
+  moveCopyQuestions: (body: MoveCopyRequest) =>
+    req<AffectedCountResponse>('/api/questions/move-copy', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  applyTags: (body: ApplyTagsRequest) =>
+    req<AffectedCountResponse>('/api/questions/apply-tags', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 
   // ── 导入 ──
   parseText: (text: string) =>
