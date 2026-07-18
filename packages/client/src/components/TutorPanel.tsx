@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { streamSse } from '../api/sse.js';
 import { api } from '../api/client.js';
+import { Markdown } from './Markdown.js';
 
 interface Turn {
   role: 'user' | 'assistant';
@@ -94,14 +95,14 @@ export function TutorPanel({ questionId, attemptId, autoLoadHistory }: Props) {
           <strong className={t.role === 'user' ? '' : 'ok'}>
             {t.role === 'user' ? '我：' : '老师：'}
           </strong>
-          {t.content}
+          <Markdown text={t.content} />
         </div>
       ))}
 
       {streaming && (
         <div className="tutor">
           <strong className="ok">老师：</strong>
-          {live || <span className="muted">思考中…</span>}
+          {live ? <Markdown text={live} /> : <span className="muted">思考中…</span>}
         </div>
       )}
 

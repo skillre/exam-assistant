@@ -1,5 +1,6 @@
 import { parse as parseCsv } from 'csv-parse/sync';
 import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
 import type { QuestionDraft } from '@exam/shared';
 import { validateDrafts } from './questionSchema.js';
 
@@ -53,6 +54,28 @@ function flatRowToRaw(row: FlatRow): unknown {
   };
 }
 
+/**
+ * 从文件提取纯文本（供 AI 解析的非结构化来源：.txt / .md / .docx）。
+ * 返回 null 表示该文件类型不是"文本类"，应走结构化解析（parseFileBuffer）。
+ */
+export async function extractText(filename: string, buf: Buffer): Promise<string | null> {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.markdown')) {
+    return buf.toString('utf8');
+  }
+  if (lower.endsWith('.docx')) {
+    const { value } = await mammoth.extractRawText({ buffer: buf });
+    return value;
+  }
+  return null;
+}
+
+/** 结构化文件后缀判断（走确定性解析，不花 AI）。 */
+export function isStructuredFile(filename: string): boolean {
+  const lower = filename.toLowerCase();
+  return lower.endsWith('.json') || lower.endsWith('.csv') || lower.endsWith('.xlsx') || lower.endsWith('.xls');
+}
+
 /** 按文件名后缀解析 buffer 为草稿题。失败抛可读错误。 */
 export function parseFileBuffer(filename: string, buf: Buffer): QuestionDraft[] {
   const lower = filename.toLowerCase();
@@ -82,5 +105,5 @@ export function parseFileBuffer(filename: string, buf: Buffer): QuestionDraft[] 
     return validateDrafts(records.map(flatRowToRaw), 'file');
   }
 
-  throw new Error('不支持的文件类型（仅 .json / .csv / .xlsx）');
+  throw new Error('不支持的文件类型（结构化：.json / .csv / .xlsx；文本类：.txt / .md / .docx）');
 }

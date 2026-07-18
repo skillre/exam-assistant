@@ -62,6 +62,23 @@ export function ImportPage() {
     }
   }
 
+  // 下载结构化导入的 CSV 模板（列约定与后端 parseFile 一致）
+  function downloadTemplate() {
+    const rows = [
+      'type,stem,options,answer,explanation,tags',
+      'single,地球的卫星是？,月球|火星|金星,0,月球是地球唯一天然卫星,天文',
+      'multiple,以下属于编程语言的有？,Python|HTML|Java|CSS,0|2,HTML/CSS 是标记与样式,编程',
+      'boolean,地球是平的。,正确|错误,false,地球是球体,常识',
+    ].join('\n');
+    const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '题库导入模板.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div>
       <h1>导入题目</h1>
@@ -69,9 +86,42 @@ export function ImportPage() {
       {notice && <div className="ok">{notice}</div>}
 
       <div className="card">
-        <h2>粘贴文本（AI 解析）</h2>
+        <h2>怎么导入？</h2>
+        <p className="muted" style={{ lineHeight: 1.8, margin: '4px 0 0' }}>
+          两种方式，选任一种即可：
+        </p>
+        <ul className="muted" style={{ lineHeight: 1.8, margin: '6px 0 0', paddingLeft: 20 }}>
+          <li>
+            <strong>直接拖个文件进来</strong>（推荐）：支持 <code>.txt / .md / .docx</code> 文档 ——
+            里面就是平时的题目文字（含题干、选项、答案），AI 会自动识别成结构化题目。
+            也支持 <code>.csv / .xlsx / .json</code> 这种已排好列的表格。
+          </li>
+          <li>
+            <strong>或直接粘贴文字</strong>：把题目复制到下方框里，点“解析文本”。
+          </li>
+        </ul>
+        <p className="muted" style={{ margin: '10px 0 0' }}>
+          不拘格式：带题号、ABCD 选项、“答案：B”都能认。解析后会先预览再入库。
+          <span className="spacer" />
+          <a href="#" onClick={(e) => { e.preventDefault(); downloadTemplate(); }}>
+            下载表格模板 (CSV)
+          </a>
+        </p>
+      </div>
+
+      <div className="card">
+        <h2>上传文件或粘贴文本</h2>
+        <label className="btn" style={{ margin: '0 0 12px' }}>
+          选择文件（txt / md / docx / csv / xlsx / json）
+          <input
+            type="file"
+            accept=".txt,.md,.markdown,.docx,.csv,.xlsx,.xls,.json"
+            style={{ display: 'none' }}
+            onChange={(e) => e.target.files?.[0] && parseFile(e.target.files[0])}
+          />
+        </label>
         <textarea
-          placeholder="把题目粘贴进来，AI 会自动识别题干、选项、答案…"
+          placeholder="…或把题目直接粘贴到这里，AI 会自动识别题干、选项、答案…"
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
@@ -79,15 +129,6 @@ export function ImportPage() {
           <button className="btn" onClick={parseText} disabled={loading || !text.trim()}>
             {loading ? '解析中…' : '解析文本'}
           </button>
-          <span className="spacer" />
-          <label className="btn ghost" style={{ margin: 0 }}>
-            上传文件
-            <input
-              type="file"
-              style={{ display: 'none' }}
-              onChange={(e) => e.target.files?.[0] && parseFile(e.target.files[0])}
-            />
-          </label>
         </div>
       </div>
 

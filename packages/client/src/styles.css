@@ -115,7 +115,6 @@ label { display: block; margin: 10px 0 4px; color: var(--muted); font-size: 13px
   border-radius: 8px;
   padding: 14px;
   margin-top: 12px;
-  white-space: pre-wrap;
 }
 
 .badge {
@@ -157,6 +156,42 @@ label { display: block; margin: 10px 0 4px; color: var(--muted); font-size: 13px
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px;
-  white-space: pre-wrap;
   line-height: 1.7;
 }
+
+/* Markdown 渲染（讲解/答疑/学情报告）——暗色主题下的富文本排版 */
+.md { line-height: 1.7; }
+.md > *:first-child { margin-top: 0; }
+.md > *:last-child { margin-bottom: 0; }
+.md p { margin: 8px 0; }
+.md ul, .md ol { margin: 8px 0; padding-left: 22px; }
+.md li { margin: 4px 0; }
+.md h1, .md h2, .md h3, .md h4 { margin: 14px 0 8px; line-height: 1.3; }
+.md h1 { font-size: 20px; }
+.md h2 { font-size: 18px; }
+.md h3 { font-size: 16px; }
+.md strong { color: var(--text); }
+.md code {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 13px;
+}
+.md pre {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+}
+.md pre code { background: none; border: none; padding: 0; }
+.md blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+.md table { border-collapse: collapse; margin: 8px 0; }
+.md th, .md td { border: 1px solid var(--border); padding: 6px 10px; }
+.md a { color: var(--accent); }

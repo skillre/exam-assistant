@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Bank } from '@exam/shared';
 import { api } from '../api/client.js';
 import { streamSse } from '../api/sse.js';
+import { Markdown } from '../components/Markdown.js';
 
 // 学情分析：可选题库范围，SSE 流式生成分析报告。
 export function InsightsPage() {
@@ -53,7 +54,7 @@ export function InsightsPage() {
       </div>
 
       {error && <div className="error">⚠ {error}</div>}
-      {report && <div className="report">{report}</div>}
+      {report && <div className="report"><Markdown text={report} /></div>}
       {!report && !running && !error && (
         <p className="muted">选择范围后点“开始分析”。</p>
       )}

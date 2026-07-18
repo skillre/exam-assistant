@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ImportCommitRequest, ImportCommitResponse, ParseResult } from '@exam/shared';
 import type { AiService } from '../ai/AiService.js';
 import { parseTextWithAi } from '../import/parseWithAi.js';
-import { parseFileBuffer } from '../import/parseFile.js';
+import { parseFileBuffer, extractText, isStructuredFile } from '../import/parseFile.js';
 import { validateDrafts } from '../import/questionSchema.js';
 import { bankRepo } from '../repositories/bankRepo.js';
 import { questionRepo } from '../repositories/questionRepo.js';
@@ -26,13 +26,28 @@ export function registerImportRoutes(app: FastifyInstance, ai: AiService): void 
     }
   });
 
-  // 结构化文件(multipart) → 草稿（不走 AI）
+  // 文件导入(multipart)。结构化(.json/.csv/.xlsx)走确定性解析；
+  // 文本类(.txt/.md/.docx)提取文字后走 AI 识别（同粘贴文本）。
   app.post('/api/import/parse-file', async (req, reply) => {
     const file = await req.file();
     if (!file) return reply.code(400).send({ error: '缺少文件' });
     const buf = await file.toBuffer();
     try {
-      const questions = parseFileBuffer(file.filename, buf);
+      if (isStructuredFile(file.filename)) {
+        const questions = parseFileBuffer(file.filename, buf);
+        const res: ParseResult = { questions };
+        return res;
+      }
+      const text = await extractText(file.filename, buf);
+      if (text === null) {
+        return reply.code(400).send({
+          error: '不支持的文件类型（文本类：.txt / .md / .docx；结构化：.json / .csv / .xlsx）',
+        });
+      }
+      if (!text.trim()) {
+        return reply.code(400).send({ error: '文件里没有可读取的文字' });
+      }
+      const questions = await parseTextWithAi(ai, text);
       const res: ParseResult = { questions };
       return res;
     } catch (err) {
