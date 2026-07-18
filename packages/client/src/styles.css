@@ -215,3 +215,43 @@ label { display: block; margin: 10px 0 4px; color: var(--muted); font-size: 13px
 .md table { border-collapse: collapse; margin: 8px 0; }
 .md th, .md td { border: 1px solid var(--border); padding: 6px 10px; }
 .md a { color: var(--accent); }
+
+/* v2：练习/成绩单/学情可视化 —— 纯 CSS，不引图表库（DEC-26） */
+.bar-fill.bad { background: var(--bad); }
+.bar-row.clickable { cursor: pointer; border-radius: 6px; }
+.bar-row.clickable:hover { background: var(--panel-2); }
+
+/* v2：题号导航（QuestionNav） */
+.qnav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.qnav-cell {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+.qnav-cell:hover { border-color: var(--accent); color: var(--text); }
+.qnav-cell.current { border-color: var(--accent); color: #fff; box-shadow: 0 0 0 1px var(--accent) inset; }
+.qnav-cell.correct { background: rgba(62,207,142,0.18); color: var(--ok); border-color: var(--ok); }
+.qnav-cell.wrong { background: rgba(255,107,107,0.18); color: var(--bad); border-color: var(--bad); }
+
+/* v2：成绩单（Scorecard）+ 学情面板（InsightsPanel）共用条形 */
+.score-big { text-align: center; padding: 8px 16px; }
+.score-num { font-size: 40px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.bar-label { width: 120px; font-size: 13px; color: var(--muted); flex-shrink: 0; }
+.bar-track { flex: 1; height: 14px; background: var(--panel-2); border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+.bar-fill { height: 100%; background: var(--accent); border-radius: 7px; transition: width 0.3s; }
+.bar-val { width: 56px; text-align: right; font-size: 12px; flex-shrink: 0; }
+
+/* v2：薄弱知识点条（错数占比，可点击下钻） */
+.weak-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; cursor: pointer; }
+.weak-row:hover .weak-label { color: var(--accent); }
+.weak-label { width: 120px; font-size: 13px; flex-shrink: 0; }
+.weak-track { flex: 1; height: 14px; background: var(--panel-2); border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+.weak-fill { height: 100%; background: var(--bad); border-radius: 7px; }
+.weak-val { width: 70px; text-align: right; font-size: 12px; flex-shrink: 0; }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Provider, ModelInfo, ProviderUpsert } from '@exam/shared';
+import type { Provider, ModelInfo, ProviderUpsert, ConnTestResult } from '@exam/shared';
 import { api } from '../api/client.js';
 import { ProviderForm } from '../components/ProviderForm.js';
 
@@ -11,6 +11,21 @@ export function SettingsPage() {
   const [editing, setEditing] = useState<Provider | 'new' | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [testing, setTesting] = useState<string>('');
+  const [testResult, setTestResult] = useState<Record<string, ConnTestResult>>({});
+
+  async function testConn(id: string) {
+    setTesting(id);
+    setTestResult((m) => ({ ...m, [id]: undefined as unknown as ConnTestResult }));
+    try {
+      const r = await api.testProvider(id);
+      setTestResult((m) => ({ ...m, [id]: r }));
+    } catch (e) {
+      setTestResult((m) => ({ ...m, [id]: { ok: false, message: (e as Error).message } }));
+    } finally {
+      setTesting('');
+    }
+  }
 
   async function refresh() {
     try {
@@ -103,10 +118,28 @@ export function SettingsPage() {
               </span>
               <span className="muted">{p.models.length} 个模型</span>
               <div className="spacer" />
+              <button
+                className="btn ghost"
+                onClick={() => testConn(p.id)}
+                disabled={testing === p.id || !p.configured}
+              >
+                {testing === p.id ? '测试中…' : '测试连接'}
+              </button>
               <button className="btn ghost" onClick={() => setEditing(p)}>编辑</button>
               <button className="btn danger" onClick={() => remove(p.id)}>删除</button>
             </div>
             <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>{p.baseUrl}</div>
+            {(() => {
+              const tr = testResult[p.id];
+              if (!tr) return null;
+              return (
+                <div className={tr.ok ? 'ok' : 'error'} style={{ fontSize: 13, marginTop: 6 }}>
+                  {tr.ok
+                    ? `✓ 连接正常${tr.latencyMs != null ? `（${tr.latencyMs}ms）` : ''}`
+                    : `✗ ${tr.message}`}
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>

@@ -118,6 +118,84 @@ export interface ActiveModelSelection {
   modelId: string;
 }
 
+// ── v2：练习会话（范围/筛选/乱序/进度/成绩单） ─────────────
+export type PracticeMode = 'all' | 'undone' | 'wrong' | 'byType' | 'byTag';
+
+export interface PracticeScope {
+  bankId: string;
+  mode: PracticeMode;
+  type?: QuestionType; // mode=byType
+  tag?: string; // mode=byTag
+  shuffle?: boolean;
+}
+
+export interface PracticeSession {
+  id: string;
+  bankId: string;
+  questionIds: string[]; // 定序后的题目 id 列表（乱序也已定序落库）
+  currentIndex: number;
+  scope: PracticeScope;
+  createdAt: number;
+}
+
+export interface StartPracticeRequest {
+  scope: PracticeScope;
+}
+export interface UpdatePracticeRequest {
+  currentIndex: number;
+}
+
+/** 成绩单：一套练习结束的汇总（每题取最新一次作答） */
+export interface Scorecard {
+  sessionId: string;
+  total: number;
+  answered: number;
+  correct: number;
+  accuracy: number; // 0..1
+  byType: { type: QuestionType; total: number; correct: number }[];
+  byTag: { tag: string; total: number; correct: number }[];
+  wrongQuestionIds: string[];
+}
+
+// ── v2：错题本增强 ─────────────────────────────────────────
+export interface WrongBookItem {
+  question: Question;
+  wrongCount: number;
+  lastWrongAt: number;
+  mastered: boolean;
+}
+
+export interface WrongBookQuery {
+  bankId?: string;
+  type?: QuestionType;
+  tag?: string;
+  includeMastered?: boolean;
+}
+
+export interface MasterRequest {
+  mastered: boolean;
+}
+
+// ── v2：导入校验 ───────────────────────────────────────────
+export interface DraftValidationIssue {
+  index: number;
+  ok: boolean;
+  errors: string[];
+}
+export interface ValidateDraftsRequest {
+  questions: QuestionDraft[];
+}
+export interface ValidateDraftsResponse {
+  results: DraftValidationIssue[];
+}
+
+// ── v2：Provider 连通性测试（DEC-27：Key 绝不回传） ────────
+export interface ConnTestResult {
+  ok: boolean;
+  message: string;
+  latencyMs?: number;
+}
+
 // ── SSE 事件协议（统一 delta | done | error） ──────────────
 export type SseEvent =
   | { type: 'delta'; text: string }

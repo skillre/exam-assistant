@@ -70,17 +70,73 @@ export const attemptRepo = {
          ORDER BY q.created_at`,
       )
       .all() as WrongQuestionRow[];
+    return rows.map(rowToQuestion);
+  },
+
+  /**
+   * v2：错题明细聚合 —— 每题错误次数 + 最近错误时间（题粒度去重）。
+   * 返回 question 全字段 + wrongCount + lastWrongAt，供错题本增强。
+   */
+  listWrongDetailed(): { question: Question; wrongCount: number; lastWrongAt: number }[] {
+    const rows = db
+      .prepare(
+        `SELECT q.*, COUNT(a.id) AS wrong_count, MAX(a.answered_at) AS last_wrong_at
+         FROM questions q
+         JOIN attempts a ON a.question_id = q.id
+         WHERE a.is_correct = 0
+         GROUP BY q.id
+         ORDER BY last_wrong_at DESC`,
+      )
+      .all() as (WrongQuestionRow & { wrong_count: number; last_wrong_at: number })[];
     return rows.map((row) => ({
-      id: row.id,
-      bankId: row.bank_id,
-      type: row.type as QuestionType,
-      stem: row.stem,
-      options: JSON.parse(row.options) as string[],
-      answer: JSON.parse(row.answer) as AnswerValue,
-      explanation: row.explanation ?? undefined,
-      tags: row.tags ? (JSON.parse(row.tags) as string[]) : undefined,
-      source: (row.source as Question['source']) ?? undefined,
-      createdAt: row.created_at,
+      question: rowToQuestion(row),
+      wrongCount: row.wrong_count,
+      lastWrongAt: row.last_wrong_at,
     }));
   },
+
+  /** v2：某题库内已作答过的题目 id 集合（"仅未做"范围用） */
+  answeredQuestionIds(bankId: string): Set<string> {
+    const rows = db
+      .prepare(
+        `SELECT DISTINCT a.question_id FROM attempts a
+         JOIN questions q ON q.id = a.question_id
+         WHERE q.bank_id = ?`,
+      )
+      .all(bankId) as { question_id: string }[];
+    return new Set(rows.map((r) => r.question_id));
+  },
+
+  /**
+   * v2：给定题目 id 集合，取每题"最新一次"作答的对错（成绩单用）。
+   * append-only 语义下用 answered_at DESC 取最新。
+   */
+  latestByQuestion(questionIds: string[]): Map<string, { isCorrect: boolean; answeredAt: number }> {
+    const result = new Map<string, { isCorrect: boolean; answeredAt: number }>();
+    if (questionIds.length === 0) return result;
+    const stmt = db.prepare(
+      `SELECT is_correct, answered_at FROM attempts
+       WHERE question_id = ? ORDER BY answered_at DESC LIMIT 1`,
+    );
+    for (const qid of questionIds) {
+      const row = stmt.get(qid) as { is_correct: number; answered_at: number } | undefined;
+      if (row) result.set(qid, { isCorrect: row.is_correct === 1, answeredAt: row.answered_at });
+    }
+    return result;
+  },
 };
+
+function rowToQuestion(row: WrongQuestionRow): Question {
+  return {
+    id: row.id,
+    bankId: row.bank_id,
+    type: row.type as QuestionType,
+    stem: row.stem,
+    options: JSON.parse(row.options) as string[],
+    answer: JSON.parse(row.answer) as AnswerValue,
+    explanation: row.explanation ?? undefined,
+    tags: row.tags ? (JSON.parse(row.tags) as string[]) : undefined,
+    source: (row.source as Question['source']) ?? undefined,
+    createdAt: row.created_at,
+  };
+}

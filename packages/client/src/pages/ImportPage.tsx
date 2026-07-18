@@ -1,8 +1,33 @@
 import { useState } from 'react';
 import type { QuestionDraft } from '@exam/shared';
 import { api } from '../api/client.js';
+import { DraftEditor } from '../components/DraftEditor.js';
 
-// 导入页：拖拽/选择文件（AI 解析或结构化）或粘贴文本 → 预览草稿 → 提交到新题库。
+// 前端即时校验：与后端 questionSchema 同口径，用于入库前拦截
+function localIssues(d: QuestionDraft): string[] {
+  const errs: string[] = [];
+  if (!d.stem.trim()) errs.push('题干不能为空');
+  if (d.type === 'boolean') {
+    if (typeof d.answer !== 'boolean') errs.push('判断题答案必须是正确/错误');
+    return errs;
+  }
+  if (d.options.length < 2) errs.push('至少要有 2 个选项');
+  if (d.options.some((o) => !o.trim())) errs.push('存在空选项');
+  if (d.type === 'single') {
+    if (typeof d.answer !== 'number' || d.answer < 0 || d.answer >= d.options.length)
+      errs.push('单选答案越界');
+  } else if (d.type === 'multiple') {
+    if (!Array.isArray(d.answer) || d.answer.length === 0) errs.push('多选至少选一个答案');
+    else if (d.answer.some((n) => n < 0 || n >= d.options.length)) errs.push('多选答案含越界项');
+  }
+  return errs;
+}
+
+function emptyDraft(): QuestionDraft {
+  return { type: 'single', stem: '', options: ['', ''], answer: 0, tags: [], source: 'file' };
+}
+
+// 导入页：拖拽/选择文件（AI 解析或结构化）或粘贴文本 → 预览可编辑草稿 → 提交到新题库。
 export function ImportPage() {
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState<QuestionDraft[]>([]);
@@ -11,6 +36,8 @@ export function ImportPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [dragOver, setDragOver] = useState(false);
+
+  const invalidCount = drafts.filter((d) => localIssues(d).length > 0).length;
 
   async function parseText() {
     if (!text.trim()) return;
@@ -44,8 +71,18 @@ export function ImportPage() {
     }
   }
 
+  function updateDraft(i: number, nd: QuestionDraft) {
+    setDrafts((ds) => ds.map((d, j) => (j === i ? nd : d)));
+  }
+  function removeDraft(i: number) {
+    setDrafts((ds) => ds.filter((_, j) => j !== i));
+  }
+  function addDraft() {
+    setDrafts((ds) => [...ds, emptyDraft()]);
+  }
+
   async function commit() {
-    if (drafts.length === 0) return;
+    if (drafts.length === 0 || invalidCount > 0) return;
     setLoading(true);
     setError('');
     try {
@@ -170,35 +207,41 @@ export function ImportPage() {
 
       {drafts.length > 0 && (
         <div className="card">
-          <h2>预览（{drafts.length} 道题）</h2>
+          <div className="row">
+            <h2 style={{ margin: 0 }}>预览与编辑（{drafts.length} 道题）</h2>
+            <div className="spacer" />
+            <button className="btn ghost" onClick={addDraft} disabled={loading}>
+              + 新增一题
+            </button>
+          </div>
+          <p className="muted" style={{ margin: '6px 0 12px' }}>
+            入库前可逐题编辑题干、选项、答案、题型与标签，红色提示为校验未通过项。
+          </p>
+
           {drafts.map((d, i) => (
-            <div key={i} className="list-item" style={{ cursor: 'default' }}>
-              <div className="row" style={{ marginBottom: 6 }}>
-                <span className="badge">
-                  {d.type === 'single' ? '单选' : d.type === 'multiple' ? '多选' : '判断'}
-                </span>
-                {d.tags?.map((t) => (
-                  <span key={t} className="badge">{t}</span>
-                ))}
-              </div>
-              <div>{d.stem}</div>
-              {d.type !== 'boolean' && (
-                <ol type="A" className="muted" style={{ margin: '6px 0 0' }}>
-                  {d.options.map((o, j) => (
-                    <li key={j}>{o}</li>
-                  ))}
-                </ol>
-              )}
-            </div>
+            <DraftEditor
+              key={i}
+              index={i}
+              draft={d}
+              errors={localIssues(d)}
+              onChange={(nd) => updateDraft(i, nd)}
+              onRemove={() => removeDraft(i)}
+            />
           ))}
+
           <label>题库名称</label>
           <input
             value={bankName}
             onChange={(e) => setBankName(e.target.value)}
             placeholder="留空则用时间戳命名"
           />
+          {invalidCount > 0 && (
+            <div className="error" style={{ marginTop: 8 }}>
+              还有 {invalidCount} 道题未通过校验，修正后才能入库。
+            </div>
+          )}
           <div className="row" style={{ marginTop: 12 }}>
-            <button className="btn" onClick={commit} disabled={loading}>
+            <button className="btn" onClick={commit} disabled={loading || invalidCount > 0}>
               确认导入
             </button>
             <button className="btn ghost" onClick={() => setDrafts([])} disabled={loading}>

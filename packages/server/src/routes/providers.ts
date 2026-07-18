@@ -34,4 +34,22 @@ export function registerProviderRoutes(app: FastifyInstance, ai: AiService): voi
     await ai.reloadProviders();
     return reply.code(204).send();
   });
+
+  // v2：连通性测试（DEC-27）。用已存解密 Key 发一次最小请求，Key 绝不回传。
+  app.post<{ Params: { id: string }; Body: { modelId?: string } }>(
+    '/api/providers/:id/test',
+    async (req, reply) => {
+      const provider = providerRepo.list().find((p) => p.id === req.params.id);
+      if (!provider) return reply.code(404).send({ error: 'provider 不存在' });
+      if (!provider.configured) {
+        return reply.send({ ok: false, message: '该 provider 尚未配置 API Key' });
+      }
+      const modelId = req.body?.modelId ?? provider.models[0]?.id;
+      if (!modelId) {
+        return reply.send({ ok: false, message: '该 provider 没有可用模型' });
+      }
+      const result = await ai.testProvider(req.params.id, modelId);
+      return reply.send(result); // ConnTestResult：绝不含 Key
+    },
+  );
 }

@@ -59,6 +59,43 @@ export class AiService {
     return model;
   }
 
+  /**
+   * v2：连通性测试（DEC-27）。用指定 provider/model 的已存解密 Key 发一次最小请求。
+   * 不切换全局激活模型、不落 JSONL。返回值绝不含 Key。
+   */
+  async testProvider(providerId: string, modelId: string): Promise<{ ok: boolean; message: string; latencyMs?: number }> {
+    const model = this.runtime.getModel(providerId, modelId);
+    if (!model) {
+      return { ok: false, message: '该 provider/模型不可用（未配置 Key 或模型 id 不存在）' };
+    }
+    const started = Date.now();
+    const { session } = await createAgentSession({
+      cwd: this.cwd,
+      modelRuntime: this.runtime,
+      model,
+      noTools: 'all',
+      sessionManager: SessionManager.inMemory(this.cwd),
+    });
+    try {
+      let streamError: string | undefined;
+      const unsub = session.subscribe((e) => {
+        if (e.type === 'message_update') {
+          const ev = e.assistantMessageEvent;
+          if (ev.type === 'error') streamError = ev.error?.errorMessage ?? '模型返回错误';
+        }
+      });
+      await session.prompt(buildSingleTurn('You are a health check.', 'Reply with: OK'));
+      unsub();
+      const err = streamError ?? lastMessageError(session);
+      if (err) return { ok: false, message: err };
+      return { ok: true, message: '连接正常', latencyMs: Date.now() - started };
+    } catch (err) {
+      return { ok: false, message: (err as Error).message };
+    } finally {
+      session.dispose();
+    }
+  }
+
   /** 一次性会话（DEC-11：导入解析用），用完 dispose，不落 JSONL */
   async runOnce(systemPrompt: string, userPrompt: string): Promise<string> {
     const model = this.requireModel();

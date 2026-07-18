@@ -3,7 +3,7 @@ import type { ImportCommitRequest, ImportCommitResponse, ParseResult } from '@ex
 import type { AiService } from '../ai/AiService.js';
 import { parseTextWithAi } from '../import/parseWithAi.js';
 import { parseFileBuffer, extractText, isStructuredFile } from '../import/parseFile.js';
-import { validateDrafts } from '../import/questionSchema.js';
+import { validateDrafts, collectDraftIssues } from '../import/questionSchema.js';
 import { bankRepo } from '../repositories/bankRepo.js';
 import { questionRepo } from '../repositories/questionRepo.js';
 
@@ -53,6 +53,15 @@ export function registerImportRoutes(app: FastifyInstance, ai: AiService): void 
     } catch (err) {
       return reply.code(400).send({ error: `解析失败：${(err as Error).message}` });
     }
+  });
+
+  // v2 FR4.3：逐条校验草稿，返回每题的 issue（不抛错），供前端入库前即时提示
+  app.post<{ Body: { questions?: unknown } }>('/api/import/validate', async (req, reply) => {
+    const questions = req.body?.questions;
+    if (!Array.isArray(questions)) {
+      return reply.code(400).send({ error: 'questions 必须是数组' });
+    }
+    return { results: collectDraftIssues(questions) };
   });
 
   // 确认入库：可指定已有 bankId 或用 bankName 新建题库

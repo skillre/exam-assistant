@@ -1,11 +1,61 @@
 import type { FastifyInstance } from 'fastify';
 import { rm } from 'node:fs/promises';
-import type { GradeRequest, GradeResponse } from '@exam/shared';
+import type {
+  GradeRequest,
+  GradeResponse,
+  StartPracticeRequest,
+  UpdatePracticeRequest,
+  PracticeScope,
+  Scorecard,
+  Question,
+  QuestionType,
+} from '@exam/shared';
 import { bankRepo } from '../repositories/bankRepo.js';
 import { questionRepo } from '../repositories/questionRepo.js';
 import { attemptRepo } from '../repositories/attemptRepo.js';
+import { practiceRepo } from '../repositories/practiceRepo.js';
+import { wrongBookRepo } from '../repositories/wrongBookRepo.js';
 import { tutorSessionRepo } from '../repositories/tutorSessionRepo.js';
 import { gradeQuestion } from '../grading/grade.js';
+
+// v2：按练习范围解析题目集（未做/错过/题型/标签），可乱序。
+function resolveScopeQuestions(scope: PracticeScope): Question[] {
+  let questions = questionRepo.listByBank(scope.bankId);
+
+  switch (scope.mode) {
+    case 'undone': {
+      const answered = attemptRepo.answeredQuestionIds(scope.bankId);
+      questions = questions.filter((q) => !answered.has(q.id));
+      break;
+    }
+    case 'wrong': {
+      const wrongIds = new Set(attemptRepo.listWrongDetailed().map((w) => w.question.id));
+      const mastered = wrongBookRepo.listMasteredIds();
+      questions = questions.filter((q) => wrongIds.has(q.id) && !mastered.has(q.id));
+      break;
+    }
+    case 'byType':
+      if (scope.type) questions = questions.filter((q) => q.type === scope.type);
+      break;
+    case 'byTag':
+      if (scope.tag) questions = questions.filter((q) => (q.tags ?? []).includes(scope.tag!));
+      break;
+    case 'all':
+    default:
+      break;
+  }
+
+  if (scope.shuffle) shuffle(questions);
+  return questions;
+}
+
+// Fisher-Yates 就地打乱
+function shuffle<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+  }
+}
 
 // Phase 4：刷题闭环。判分纯程序、确定性（DEC-3），每次作答落 attempt。
 
@@ -40,9 +90,93 @@ export function registerQuizRoutes(app: FastifyInstance): void {
     return res;
   });
 
-  // 错题本：做错过的题（去重到题粒度）
-  app.get('/api/quiz/wrong', async () => attemptRepo.listWrongQuestions());
+  // 错题本增强：错误次数/最近错误时间 + 已掌握软标记 + 筛选（DEC-28）
+  app.get<{ Querystring: { bankId?: string; type?: QuestionType; tag?: string; includeMastered?: string } }>(
+    '/api/quiz/wrong',
+    async (req) => {
+      const { bankId, type, tag, includeMastered } = req.query ?? {};
+      const mastered = wrongBookRepo.listMasteredIds();
+      const withMastered = includeMastered === '1' || includeMastered === 'true';
+      return attemptRepo
+        .listWrongDetailed()
+        .filter((w) => {
+          if (bankId && w.question.bankId !== bankId) return false;
+          if (type && w.question.type !== type) return false;
+          if (tag && !(w.question.tags ?? []).includes(tag)) return false;
+          if (!withMastered && mastered.has(w.question.id)) return false;
+          return true;
+        })
+        .map((w) => ({
+          question: w.question,
+          wrongCount: w.wrongCount,
+          lastWrongAt: w.lastWrongAt,
+          mastered: mastered.has(w.question.id),
+        }));
+    },
+  );
 
+  // 标记/取消错题「已掌握」（软移除，可恢复，DEC-28）
+  app.post<{ Params: { questionId: string }; Body: { mastered: boolean } }>(
+    '/api/quiz/wrong/:questionId/master',
+    async (req, reply) => {
+      const q = questionRepo.get(req.params.questionId);
+      if (!q) return reply.code(404).send({ error: '题目不存在' });
+      if (typeof req.body?.mastered !== 'boolean') {
+        return reply.code(400).send({ error: 'mastered 必须是布尔值' });
+      }
+      wrongBookRepo.setMastered(req.params.questionId, req.body.mastered);
+      return reply.code(204).send();
+    },
+  );
+
+  // ── v2：练习会话（范围/筛选/乱序/进度/成绩单，DEC-24/25） ──
+
+  // 开始一套练习：按范围解析题目、定序落库，返回会话
+  app.post<{ Body: StartPracticeRequest }>('/api/practice/start', async (req, reply) => {
+    const scope = req.body?.scope;
+    if (!scope || !scope.bankId || !scope.mode) {
+      return reply.code(400).send({ error: 'scope.bankId/mode 必填' });
+    }
+    const bank = bankRepo.get(scope.bankId);
+    if (!bank) return reply.code(404).send({ error: '题库不存在' });
+
+    const questions = resolveScopeQuestions(scope);
+    if (questions.length === 0) {
+      return reply.code(409).send({ error: '该范围下没有题目' });
+    }
+    return practiceRepo.create(scope, questions.map((q) => q.id));
+  });
+
+  // 续做：读回练习会话（含定序题目 id 与进度指针）
+  app.get<{ Params: { id: string } }>('/api/practice/:id', async (req, reply) => {
+    const session = practiceRepo.get(req.params.id);
+    if (!session) return reply.code(404).send({ error: '练习会话不存在' });
+    return session;
+  });
+
+  // 保存续做进度指针
+  app.patch<{ Params: { id: string }; Body: UpdatePracticeRequest }>(
+    '/api/practice/:id',
+    async (req, reply) => {
+      const session = practiceRepo.get(req.params.id);
+      if (!session) return reply.code(404).send({ error: '练习会话不存在' });
+      const idx = req.body?.currentIndex;
+      if (typeof idx !== 'number' || idx < 0) {
+        return reply.code(400).send({ error: 'currentIndex 非法' });
+      }
+      practiceRepo.updateIndex(req.params.id, idx);
+      return reply.code(204).send();
+    },
+  );
+
+  // 成绩单：对本会话题目取每题最新一次作答，聚合正确率与分布
+  app.get<{ Params: { id: string } }>('/api/practice/:id/scorecard', async (req, reply) => {
+    const session = practiceRepo.get(req.params.id);
+    if (!session) return reply.code(404).send({ error: '练习会话不存在' });
+    return buildScorecard(session.id, session.questionIds);
+  });
+
+  // 标记/取消错题"已掌握"（软标记，DEC-28）
   // 删除题库：先删该库答疑 JSONL 文件（避免孤儿），再删库（外键 CASCADE
   // 清 questions/attempts/tutor_sessions 行，DEC-13）。
   app.delete<{ Params: { id: string } }>('/api/banks/:id', async (req, reply) => {
@@ -56,4 +190,50 @@ export function registerQuizRoutes(app: FastifyInstance): void {
     bankRepo.remove(req.params.id);
     return reply.code(204).send();
   });
+}
+
+// v2：组装成绩单 —— 每题取最新一次作答，聚合正确率与分布。
+function buildScorecard(sessionId: string, questionIds: string[]): Scorecard {
+  const latest = attemptRepo.latestByQuestion(questionIds);
+  const byTypeMap = new Map<QuestionType, { total: number; correct: number }>();
+  const byTagMap = new Map<string, { total: number; correct: number }>();
+  const wrongQuestionIds: string[] = [];
+  let answered = 0;
+  let correct = 0;
+
+  for (const qid of questionIds) {
+    const q = questionRepo.get(qid);
+    if (!q) continue;
+    const att = latest.get(qid);
+    const t = byTypeMap.get(q.type) ?? { total: 0, correct: 0 };
+    t.total += 1;
+    const tags = (q.tags ?? []).length > 0 ? q.tags! : ['未分类'];
+    for (const tag of tags) {
+      const entry = byTagMap.get(tag) ?? { total: 0, correct: 0 };
+      entry.total += 1;
+      byTagMap.set(tag, entry);
+    }
+    if (att) {
+      answered += 1;
+      if (att.isCorrect) {
+        correct += 1;
+        t.correct += 1;
+        for (const tag of tags) byTagMap.get(tag)!.correct += 1;
+      } else {
+        wrongQuestionIds.push(qid);
+      }
+    }
+    byTypeMap.set(q.type, t);
+  }
+
+  return {
+    sessionId,
+    total: questionIds.length,
+    answered,
+    correct,
+    accuracy: answered > 0 ? correct / answered : 0,
+    byType: [...byTypeMap.entries()].map(([type, s]) => ({ type, total: s.total, correct: s.correct })),
+    byTag: [...byTagMap.entries()].map(([tag, s]) => ({ tag, total: s.total, correct: s.correct })),
+    wrongQuestionIds,
+  };
 }

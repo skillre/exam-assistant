@@ -41,6 +41,17 @@ export const questionDraftSchema = z
 
 export const questionDraftArraySchema = z.array(questionDraftSchema);
 
+/** v2：逐条校验（收集 issue 而非抛错），供导入预览即时反馈。 */
+export function collectDraftIssues(
+  questions: unknown[],
+): { index: number; ok: boolean; errors: string[] }[] {
+  return questions.map((q, index) => {
+    const r = questionDraftSchema.safeParse(q);
+    if (r.success) return { index, ok: true, errors: [] };
+    return { index, ok: false, errors: r.error.issues.map((i) => i.message) };
+  });
+}
+
 /** 校验一组草稿；失败抛出可读错误。source 由调用方补充。 */
 export function validateDrafts(raw: unknown, source: QuestionDraft['source']): QuestionDraft[] {
   const parsed = questionDraftArraySchema.parse(raw);

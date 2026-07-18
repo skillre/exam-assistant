@@ -13,6 +13,14 @@ import type {
   ProviderUpsert,
   ModelInfo,
   ActiveModelSelection,
+  PracticeScope,
+  PracticeSession,
+  Scorecard,
+  WrongBookItem,
+  WrongBookQuery,
+  LearningSnapshot,
+  ValidateDraftsResponse,
+  ConnTestResult,
 } from '@exam/shared';
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -61,7 +69,49 @@ export const api = {
   // ── 刷题 ──
   grade: (body: GradeRequest) =>
     req<GradeResponse>('/api/quiz/grade', { method: 'POST', body: JSON.stringify(body) }),
-  listWrong: () => req<Question[]>('/api/quiz/wrong'),
+
+  // ── v2：练习会话 ──
+  startPractice: (scope: PracticeScope) =>
+    req<PracticeSession>('/api/practice/start', {
+      method: 'POST',
+      body: JSON.stringify({ scope }),
+    }),
+  getPractice: (id: string) => req<PracticeSession>(`/api/practice/${id}`),
+  savePracticeIndex: (id: string, currentIndex: number) =>
+    req<void>(`/api/practice/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ currentIndex }),
+    }),
+  getScorecard: (id: string) => req<Scorecard>(`/api/practice/${id}/scorecard`),
+
+  // ── v2：错题本增强 ──
+  listWrong: (q: WrongBookQuery = {}) => {
+    const p = new URLSearchParams();
+    if (q.bankId) p.set('bankId', q.bankId);
+    if (q.type) p.set('type', q.type);
+    if (q.tag) p.set('tag', q.tag);
+    if (q.includeMastered) p.set('includeMastered', '1');
+    const qs = p.toString();
+    return req<WrongBookItem[]>(`/api/quiz/wrong${qs ? `?${qs}` : ''}`);
+  },
+  setMastered: (questionId: string, mastered: boolean) =>
+    req<void>(`/api/quiz/wrong/${questionId}/master`, {
+      method: 'POST',
+      body: JSON.stringify({ mastered }),
+    }),
+
+  // ── v2：学情快照（结构化，REST 即时）──
+  insightsSnapshot: (bankId?: string) =>
+    req<LearningSnapshot>(
+      `/api/insights/snapshot${bankId ? `?bankId=${encodeURIComponent(bankId)}` : ''}`,
+    ),
+
+  // ── v2：导入草稿校验 ──
+  validateDrafts: (questions: QuestionDraft[]) =>
+    req<ValidateDraftsResponse>('/api/import/validate', {
+      method: 'POST',
+      body: JSON.stringify({ questions }),
+    }),
 
   // ── 答疑历史 ──
   tutorHistory: (questionId: string) =>
@@ -76,6 +126,8 @@ export const api = {
   updateProvider: (id: string, body: ProviderUpsert) =>
     req<Provider>(`/api/providers/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteProvider: (id: string) => req<void>(`/api/providers/${id}`, { method: 'DELETE' }),
+  testProvider: (id: string) =>
+    req<ConnTestResult>(`/api/providers/${id}/test`, { method: 'POST' }),
   listModels: () => req<ModelInfo[]>('/api/models'),
   setActiveModel: (body: ActiveModelSelection) =>
     req<{ ok: true }>('/api/settings/model', { method: 'POST', body: JSON.stringify(body) }),

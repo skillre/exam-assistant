@@ -52,7 +52,23 @@ CREATE TABLE IF NOT EXISTS app_settings (   -- 单实例全局设置：当前激
   value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS practice_sessions ( -- v2：练习会话（范围/定序/进度续做）
+  id            TEXT PRIMARY KEY,
+  bank_id       TEXT NOT NULL REFERENCES banks(id) ON DELETE CASCADE,
+  question_ids  TEXT NOT NULL,              -- JSON string[]（定序后的题目 id）
+  current_index INTEGER NOT NULL DEFAULT 0,
+  scope         TEXT NOT NULL,              -- JSON PracticeScope
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS wrong_book_state ( -- v2：错题"已掌握"软标记（DEC-28）
+  question_id TEXT PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+  is_mastered INTEGER NOT NULL DEFAULT 0,
+  mastered_at INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_questions_bank ON questions(bank_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_question ON attempts(question_id);
 CREATE INDEX IF NOT EXISTS idx_tutor_question ON tutor_sessions(question_id);
+CREATE INDEX IF NOT EXISTS idx_practice_bank ON practice_sessions(bank_id);
 `;

@@ -9,6 +9,12 @@ import { openSse } from './sseWriter.js';
 // 用临时讲解会话跑完即弃（不落 tutor_sessions）。
 
 export function registerInsightsRoutes(app: FastifyInstance, ai: AiService): void {
+  // v2：结构化学情快照（REST 即时返回，非 SSE，DEC-24）。空记录返回空快照而非 409，
+  // 让前端面板能显示「暂无数据」。
+  app.get<{ Querystring: { bankId?: string } }>('/api/insights/snapshot', async (req) => {
+    return learningDataCollector.collect(req.query?.bankId);
+  });
+
   app.post<{ Body: { bankId?: string } }>('/api/insights/analyze', async (req, reply) => {
     const bankId = req.body?.bankId;
 

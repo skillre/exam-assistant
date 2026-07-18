@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { PracticeScope, QuestionType } from '@exam/shared';
 import { ImportPage } from './pages/ImportPage.js';
 import { QuizPage } from './pages/QuizPage.js';
 import { WrongBookPage } from './pages/WrongBookPage.js';
@@ -15,8 +16,28 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'settings', label: '设置' },
 ];
 
+// 跨页下钻筛选（FR3.4）：学情薄弱点 → 刷题/错题按标签筛选
+export interface DrillFilter {
+  bankId?: string;
+  tag?: string;
+  type?: QuestionType;
+}
+
 export function App() {
   const [tab, setTab] = useState<Tab>('quiz');
+  const [quizScope, setQuizScope] = useState<Partial<PracticeScope> | null>(null);
+  const [wrongFilter, setWrongFilter] = useState<DrillFilter | null>(null);
+
+  // 学情下钻到刷题（按标签）
+  function drillToQuiz(filter: DrillFilter) {
+    setQuizScope({ bankId: filter.bankId, tag: filter.tag, mode: filter.tag ? 'byTag' : 'all' });
+    setTab('quiz');
+  }
+  // 学情下钻 / 成绩单跳转到错题本
+  function drillToWrong(filter?: DrillFilter) {
+    setWrongFilter(filter ?? {});
+    setTab('wrong');
+  }
 
   return (
     <div className="app">
@@ -35,10 +56,14 @@ export function App() {
         </nav>
       </header>
       <main className="content">
-        {tab === 'quiz' && <QuizPage />}
+        {tab === 'quiz' && (
+          <QuizPage initialScope={quizScope} onNavigateWrong={() => drillToWrong()} />
+        )}
         {tab === 'import' && <ImportPage />}
-        {tab === 'wrong' && <WrongBookPage />}
-        {tab === 'insights' && <InsightsPage />}
+        {tab === 'wrong' && <WrongBookPage initialFilter={wrongFilter} />}
+        {tab === 'insights' && (
+          <InsightsPage onDrillToQuiz={drillToQuiz} onDrillToWrong={drillToWrong} />
+        )}
         {tab === 'settings' && <SettingsPage />}
       </main>
     </div>
