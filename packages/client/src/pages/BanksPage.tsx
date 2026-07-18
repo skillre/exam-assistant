@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { BankWithCount, Question, QuestionDraft, QuestionType } from '@exam/shared';
 import { api } from '../api/client.js';
 import { DraftEditor } from '../components/DraftEditor.js';
+import { ImportPanel } from '../components/ImportPanel.js';
 
 // v2 题库管理：列表（新建/重命名/删除/题数）+ 题目维护（增改删/移动复制/批量标签）。
 // 与「导入」分工：导入负责一次性灌题，这里负责已有题库的组织维护。
@@ -33,6 +34,7 @@ export function BanksPage() {
   const [notice, setNotice] = useState('');
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
   const [newBankName, setNewBankName] = useState('');
+  const [showImport, setShowImport] = useState(false);
 
   const loadBanks = useCallback(() => {
     setError('');
@@ -120,9 +122,27 @@ export function BanksPage() {
           style={{ flex: 1 }}
         />
         <button className="btn" onClick={createBank} disabled={!newBankName.trim()}>
-          + 新建题库
+          + 新建空题库
+        </button>
+        <button
+          className={showImport ? 'btn' : 'btn ghost'}
+          onClick={() => setShowImport((v) => !v)}
+        >
+          {showImport ? '收起导入' : '📥 导入到新题库'}
         </button>
       </div>
+
+      {showImport && (
+        <div style={{ marginBottom: 16 }}>
+          <ImportPanel
+            onImported={() => {
+              setShowImport(false);
+              flash('已导入到新题库');
+              loadBanks();
+            }}
+          />
+        </div>
+      )}
 
       {banks.length === 0 ? (
         <p className="muted">还没有题库。先新建一个，或去「导入」页灌题。</p>
@@ -168,6 +188,7 @@ function BankDetail({ bankId, bankName, allBanks, tagSuggestions, onBack, onChan
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<QuestionDraft | null>(null);
   const [adding, setAdding] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   // 批量操作输入
   const [moveTarget, setMoveTarget] = useState('');
@@ -298,6 +319,12 @@ function BankDetail({ bankId, bankName, allBanks, tagSuggestions, onBack, onChan
         <h2 style={{ margin: 0 }}>{bankName}</h2>
         <span className="badge">{questions.length} 题</span>
         <div className="spacer" />
+        <button
+          className={showImport ? 'btn' : 'btn ghost'}
+          onClick={() => setShowImport((v) => !v)}
+        >
+          {showImport ? '收起导入' : '📥 导入到本库'}
+        </button>
         <button className="btn" onClick={startAdd}>
           + 新增题目
         </button>
@@ -305,6 +332,20 @@ function BankDetail({ bankId, bankName, allBanks, tagSuggestions, onBack, onChan
 
       {error && <div className="error">{error}</div>}
       {notice && <div className="badge ok" style={{ marginBottom: 10 }}>{notice}</div>}
+
+      {showImport && (
+        <div style={{ marginBottom: 16 }}>
+          <ImportPanel
+            targetBankId={bankId}
+            targetBankName={bankName}
+            onImported={() => {
+              setShowImport(false);
+              load();
+              onChanged();
+            }}
+          />
+        </div>
+      )}
 
       {draft && (
         <div className="card" style={{ marginBottom: 16 }}>

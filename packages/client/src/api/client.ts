@@ -29,10 +29,16 @@ import type {
 } from '@exam/shared';
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
+  // 只在带 body 时声明 JSON 头：空 body 的 DELETE/GET 带上 application/json
+  // 会被 Fastify 以 FST_ERR_CTP_EMPTY_JSON_BODY 拒（400 Bad Request）。
+  // FormData（multipart）也不能手设 Content-Type，交给浏览器带 boundary。
+  const hasBody = init?.body !== undefined && init?.body !== null;
+  const isForm = typeof FormData !== 'undefined' && init?.body instanceof FormData;
+  const headers: Record<string, string> = {
+    ...(hasBody && !isForm ? { 'Content-Type': 'application/json' } : {}),
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+  const resp = await fetch(url, { ...init, headers });
   if (!resp.ok) {
     let msg = `请求失败 (${resp.status})`;
     try {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { QuestionDraft } from '@exam/shared';
 import { api } from '../api/client.js';
-import { DraftEditor } from '../components/DraftEditor.js';
+import { DraftEditor } from './DraftEditor.js';
 
 // 前端即时校验：与后端 questionSchema 同口径，用于入库前拦截
 function localIssues(d: QuestionDraft): string[] {
@@ -27,8 +27,17 @@ function emptyDraft(): QuestionDraft {
   return { type: 'single', stem: '', options: ['', ''], answer: 0, tags: [], source: 'file' };
 }
 
-// 导入页：拖拽/选择文件（AI 解析或结构化）或粘贴文本 → 预览可编辑草稿 → 提交到新题库。
-export function ImportPage() {
+interface Props {
+  // 追加模式：传入目标题库 id（入库到已有库）；不传则新建库模式（用 bankName）
+  targetBankId?: string;
+  targetBankName?: string;
+  // 入库成功回调（count = 本次入库题数）
+  onImported?: (count: number) => void;
+}
+
+// 可复用导入面板：拖拽/选择文件（AI 解析或结构化）或粘贴文本 → 预览可编辑草稿 → 入库。
+// 新建库模式带题库名输入；追加模式直接入库到 targetBankId。
+export function ImportPanel({ targetBankId, targetBankName, onImported }: Props) {
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState<QuestionDraft[]>([]);
   const [bankName, setBankName] = useState('');
@@ -37,6 +46,8 @@ export function ImportPage() {
   const [notice, setNotice] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+
+  const appendMode = !!targetBankId;
 
   useEffect(() => {
     api.listTags().then(setTagSuggestions).catch(() => {});
@@ -91,14 +102,16 @@ export function ImportPage() {
     setLoading(true);
     setError('');
     try {
-      const r = await api.commitImport({
-        bankName: bankName.trim() || `导入 ${new Date().toLocaleString()}`,
-        questions: drafts,
-      });
-      setNotice(`已导入 ${r.count} 道题到题库`);
+      const r = await api.commitImport(
+        appendMode
+          ? { bankId: targetBankId, questions: drafts }
+          : { bankName: bankName.trim() || `导入 ${new Date().toLocaleString()}`, questions: drafts },
+      );
+      setNotice(`已导入 ${r.count} 道题${appendMode ? '到本题库' : '到新题库'}`);
       setDrafts([]);
       setText('');
       setBankName('');
+      onImported?.(r.count);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -125,14 +138,17 @@ export function ImportPage() {
 
   return (
     <div>
-      <h1>导入题目</h1>
       {error && <div className="error">⚠ {error}</div>}
       {notice && <div className="ok">{notice}</div>}
 
       <div className="card">
-        <h2>怎么导入？</h2>
+        <h3 style={{ marginTop: 0 }}>怎么导入？</h3>
         <p className="muted" style={{ lineHeight: 1.8, margin: '4px 0 0' }}>
-          两种方式，选任一种即可：
+          {appendMode ? (
+            <>解析出的题目会<strong>追加到当前题库</strong>「{targetBankName}」。两种方式，选任一种：</>
+          ) : (
+            <>两种方式，选任一种即可：</>
+          )}
         </p>
         <ul className="muted" style={{ lineHeight: 1.8, margin: '6px 0 0', paddingLeft: 20 }}>
           <li>
@@ -154,7 +170,7 @@ export function ImportPage() {
       </div>
 
       <div className="card">
-        <h2>方式一：上传文件</h2>
+        <h3 style={{ marginTop: 0 }}>方式一：上传文件</h3>
         <label
           className={`dropzone${dragOver ? ' over' : ''}${loading ? ' disabled' : ''}`}
           onDragOver={(e) => {
@@ -196,7 +212,7 @@ export function ImportPage() {
       </div>
 
       <div className="card">
-        <h2>方式二：粘贴文本</h2>
+        <h3 style={{ marginTop: 0 }}>方式二：粘贴文本</h3>
         <textarea
           placeholder="把题目文字直接粘贴到这里（含题干、选项、答案），AI 会自动识别…"
           value={text}
@@ -213,7 +229,7 @@ export function ImportPage() {
       {drafts.length > 0 && (
         <div className="card">
           <div className="row">
-            <h2 style={{ margin: 0 }}>预览与编辑（{drafts.length} 道题）</h2>
+            <h3 style={{ margin: 0 }}>预览与编辑（{drafts.length} 道题）</h3>
             <div className="spacer" />
             <button className="btn ghost" onClick={addDraft} disabled={loading}>
               + 新增一题
@@ -235,12 +251,16 @@ export function ImportPage() {
             />
           ))}
 
-          <label>题库名称</label>
-          <input
-            value={bankName}
-            onChange={(e) => setBankName(e.target.value)}
-            placeholder="留空则用时间戳命名"
-          />
+          {!appendMode && (
+            <>
+              <label>题库名称</label>
+              <input
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="留空则用时间戳命名"
+              />
+            </>
+          )}
           {invalidCount > 0 && (
             <div className="error" style={{ marginTop: 8 }}>
               还有 {invalidCount} 道题未通过校验，修正后才能入库。
@@ -248,7 +268,7 @@ export function ImportPage() {
           )}
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn" onClick={commit} disabled={loading || invalidCount > 0}>
-              确认导入
+              {appendMode ? '确认导入到本库' : '确认导入'}
             </button>
             <button className="btn ghost" onClick={() => setDrafts([])} disabled={loading}>
               放弃

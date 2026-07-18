@@ -1,17 +1,15 @@
 import { useState } from 'react';
 import type { PracticeScope, QuestionType } from '@exam/shared';
-import { ImportPage } from './pages/ImportPage.js';
 import { QuizPage } from './pages/QuizPage.js';
 import { BanksPage } from './pages/BanksPage.js';
 import { WrongBookPage } from './pages/WrongBookPage.js';
 import { InsightsPage } from './pages/InsightsPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
 
-type Tab = 'quiz' | 'import' | 'banks' | 'wrong' | 'insights' | 'settings';
+type Tab = 'quiz' | 'banks' | 'wrong' | 'insights' | 'settings';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'quiz', label: '刷题' },
-  { key: 'import', label: '导入' },
   { key: 'banks', label: '题库' },
   { key: 'wrong', label: '错题本' },
   { key: 'insights', label: '学情' },
@@ -61,7 +59,6 @@ export function App() {
         {tab === 'quiz' && (
           <QuizPage initialScope={quizScope} onNavigateWrong={() => drillToWrong()} />
         )}
-        {tab === 'import' && <ImportPage />}
         {tab === 'banks' && <BanksPage />}
         {tab === 'wrong' && <WrongBookPage initialFilter={wrongFilter} />}
         {tab === 'insights' && (
