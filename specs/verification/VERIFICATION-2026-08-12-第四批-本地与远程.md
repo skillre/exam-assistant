@@ -29,6 +29,19 @@ history len: 1 → {bankName: 'Curl验证库', questionCount: 1, completed: Fals
 finish 后 completed: True      ← 与快照联动
 ```
 
+## 精确值断言补充（auditor 第 2 轮否决项，2026-08-12）
+
+routes.smoke.test.ts 第四批 it-block 造已知答案组合：导入 2 题（single 特殊转义题 + boolean），答对 1 / 答错 1，断言 history 聚合**精确值**：
+
+```
+expect(mine.correct).toBe(1);          // 1 对
+expect(mine.total).toBe(2);            // 2 题
+expect(mine.accuracy).toBeCloseTo(0.5);
+expect(mine.answered).toBe(2);         // 全部已答
+```
+
+修复前仅 `typeof correct === "number"` / `total > 0`（0/0 也能过）；现聚合错误会直接失败。wrong.csv 断言同步改为匹配答错题（`boolean,地球是圆的,[],true,,,false` 含 wrong_answer 列）。
+
 ## 远程部署验证（106.37.96.58:8080）
 
 - commit 887a0d5 push 成功；`docker compose up --build -d` 双容器重建 healthy

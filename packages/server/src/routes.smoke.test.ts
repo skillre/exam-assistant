@@ -215,6 +215,14 @@ describe("HTTP 全链路（routes.smoke，评审 S3）", () => {
 					explanation: "解释含\n换行",
 					tags: ["第四批标签"],
 				},
+				{
+					type: "boolean",
+					stem: "地球是圆的",
+					options: [],
+					answer: true,
+					explanation: "",
+					tags: [],
+				},
 			],
 		});
 		expect(imp2.statusCode).toBe(201);
@@ -222,8 +230,11 @@ describe("HTTP 全链路（routes.smoke，评审 S3）", () => {
 			method: "GET",
 			url: `/api/banks/${nbId}/questions`,
 		});
-		const qid = (qs.json() as Array<{ id: string }>)[0]!.id;
-		await post("/api/quiz/grade", { questionId: qid, userAnswer: 1 }); // 答错 → 进错题
+		const qsArr = qs.json() as Array<{ id: string; type: string }>;
+		const qid = qsArr[0]!.id; // single：含特殊字符题
+		const qid2 = qsArr[1]!.id; // boolean
+		await post("/api/quiz/grade", { questionId: qid, userAnswer: 0 }); // 答对
+		await post("/api/quiz/grade", { questionId: qid2, userAnswer: false }); // 答错 → 进错题
 
 		// questions.csv：表头 6 列 + 转义（逗号/引号/换行）
 		const csv = await app.inject({
@@ -237,11 +248,11 @@ describe("HTTP 全链路（routes.smoke，评审 S3）", () => {
 		expect(text).toContain('"含逗号,与引号""题""?"');
 		expect(text).toContain('"解释含\n换行"');
 
-		// wrong.csv：7 列含 wrong_answer，且含刚答错的题
+		// wrong.csv：7 列含 wrong_answer，且含刚答错的 boolean 题（含用户错误作答 false）
 		const wcsv = await app.inject({ method: "GET", url: "/api/export/wrong.csv" });
 		expect(wcsv.statusCode).toBe(200);
 		expect(wcsv.body).toContain("wrong_answer");
-		expect(wcsv.body).toContain('"含逗号,与引号""题""?"');
+		expect(wcsv.body).toContain("boolean,地球是圆的,[],true,,,false");
 
 		// tags/counts：只含该库标签且计数正确
 		const tc = await app.inject({
@@ -266,13 +277,18 @@ describe("HTTP 全链路（routes.smoke，评审 S3）", () => {
 			completed: boolean;
 			correct: number;
 			total: number;
+			accuracy: number;
+			answered: number;
 		}>;
 		expect(items.length).toBeGreaterThan(0);
 		const mine = items.find((x) => x.bankName === "第四批库")!;
 		expect(mine.id).toBe(sid);
 		expect(mine.completed).toBe(false);
-		expect(mine.total).toBeGreaterThan(0);
-		expect(typeof mine.correct).toBe("number");
+		// 精确值断言（审计 R2 否决项）：已知 2 题 1 对 1 错 → correct=1, total=2, accuracy=0.5
+		expect(mine.correct).toBe(1);
+		expect(mine.total).toBe(2);
+		expect(mine.accuracy).toBeCloseTo(0.5);
+		expect(mine.answered).toBe(2);
 
 		// finish 后 history completed=true（闭环：历史与快照联动）
 		const fin = await app.inject({
