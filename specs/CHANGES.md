@@ -69,6 +69,7 @@
   - 远程（106.37.96.58:6422）端到端：面板 REST 即时、诊断 SSE 流式+11 条落库+4 类错因、计划生成落两表（8 任务）、一键开练、快照→趋势点、连续 3 次答对 mastered:true+错题本联动、历史回读、AI 降级 error 帧
   - 实测修复 3 处：extractJson 误抽 phases 数组、AI 编造 bankId（prompt 注入真实题库）、全局计划 bank_id NULL（新表定义）
   - 证据：specs/verification/VERIFICATION-2026-08-10-第二批-v3远程端到端.md
+
 ### 2026-08-10 第三批：P2 体验优化与代码卫生（级别：M，评审前修订版）
 
 - **现状**（审计 + 本次核查）：① Tab 切换无 URL 状态，刷新必回刷题页、无深链；② 题目选项纯 div 无键盘可操作（QuestionCard:107-128）；③ Fastify 默认错误（{statusCode,error,message}）前端只读 j.error 显示英文状态名（client.ts:54）；④ selectModel 先 setActive 后调 API，失败不回滚（SettingsPage:70-75）；⑤ ProviderForm 用 alert 报错 + apiType 自由文本；⑥ 死代码：shared-check.ts、api.validateDrafts、attemptRepo.listWrongQuestions、wrongBookRepo.getState、providerRepo.get；⑦ nanoid 死依赖（package.json:22，src 零 import）；⑧ 题型中文映射重复 4 份 + flash() 3 份拷贝 + 删除题库逻辑 2 份；⑨ insights analyze 每次产生孤儿 JSONL（AiService.createTutorSession 文件持久化，跑完不删）；⑩ tutor 会话并发双建竞态（question_id 无 UNIQUE，tutorSessionRepo:32-35）；⑪ 测试缺口：parseFile 解析 0 测试、路由层 0 测试、provider Key 链路 0 测试。
@@ -165,3 +166,35 @@
   - 契约⑤按用户决定取消浏览器实测，改 parseTabFromHash 纯函数单测（4 用例）+ 代码核查
   - auditor 否决项修复：useFlashNotice 三处实际调用（原 hook 死代码）、删除题库 confirm 文案统一（669e4f8）
   - 远程：已部署 healthy；零新增依赖（nanoid 删除）、schema/docker 零改动
+
+## 2026-08-12 第五批：主观题 + AI 评分（级别：M~L，Change Gate 独立立项，v2 修订）
+- **现状**：题型仅 `single | multiple | boolean`；`AnswerValue = number | number[] | boolean` 无字符串；判分纯规则同步（grading/grade.ts，DEC-3 客观题不经 AI）；/api/quiz/grade 毫秒级返回；主观题在第二批 FRD Non-Goals 中被明确推迟，本批正式立项。
+- **目标**：新增第四种题型 `essay`（主观题/简答），AI 评分 + 批改意见，全链路打通（导入→刷题→判分→错题本→掌握→学情→历史→导出）。
+- **用户三问确认（2026-08-12）**：
+  1. 评分时机=提交即等 AI 判分（前端 loading 态；LLM 失败/超时→grade 返回 5xx、attempts 不落库、前端可重试，不做「待批改」队列态）
+  2. 评分粒度=0/1 对错 + AI 批改意见（is_correct 语义不变，错题本/掌握度/学情/历史链路零改动复用）
+  3. 评分依据=answer 列填参考答案文本（CSV 导入模板同构延续，options 空、answer=参考文本、explanation=评分要点），AI 评分时题目+参考答案+评分要点+用户答案一并给模型
+- **改动点**：
+  - shared/types.ts：`QuestionType` 加 `"essay"`；`AnswerValue` 加 `string`；`GradeResponse` 加 `feedback?: string`（AI 批改意见）；`QUESTION_TYPE_LABEL` 加 essay 文案
+  - server：新 `ai/essayGradingPrompts.ts`（评分 prompt：只输出 JSON {isCorrect, feedback}）；新 `import/essayGradingSchema.ts`（zod 校验评分输出：isCorrect 必须 boolean、feedback 必须 string，参照 diagnosisSchema 模式——评审 #5）；**`ai/AiService.ts` runOnce 增加可选 timeout 参数（评审 #3）**；grading/grade.ts 加 essay 注释（essay 不走规则判分，路由层分流，规则逻辑零改动）；routes/quiz.ts grade 端点 essay 分流：空/纯空白答案直接 400 不调 AI（评审 #7），正常则 `runOnce` 评分（带超时）→ zod 校验输出（非法输出按失败处理 5xx 不落库）→ 成功落 attempts + 返回 isCorrect/feedback
+  - **`import/questionSchema.ts`：`z.enum` 加 `'essay'`、answer union 加 `z.string()`、superRefine 加 essay 分支（answer 非空字符串）（评审 #2——导入全路径必经闸门）**；`import/parseFile.ts` 支持 essay（answer=文本，trim 非空校验）；**`import/parseWithAi.ts` prompt 题型说明加 essay（粘贴导入同样支持 essay，评审 #4）**
+  - client：QuestionCard.tsx essay 渲染 textarea 输入（可提交空答案判定无效）+ 评分 loading 态 + 批改意见展示（feedback 卡片）
+  - 导出：questions.csv/wrong.csv essay 行（options 空列、answer=参考文本、wrong_answer=用户作答），**answer 存储统一 JSON.stringify(参考文本)（与列语义 JSON 一致，评审 #6）**，导入导出 essay 往返一致
+  - 文档：导入模板说明补 essay 行示例
+- **影响面**：shared 类型 → questionSchema（导入全路径闸门）→ parseFile/parseWithAi → grading/grade.ts（essay 异步分流，客观题路径零改动）→ quiz.ts grade/export → QuestionCard → 学情闭环（is_correct 0/1 不变则下游零改动）。风险点：① grade 端点异步化只影响 essay 分支，客观题毫秒级契约不变；② AI 不可用/超时降级路径（5xx 不落库）；③ 主观题无唯一正确答案，重练/错题本语义依赖 AI 一致性（可接受，批改意见兜底）；④ questions.type CHECK 约束扩 'essay' 为**本批唯一 schema DDL 变化**（SQLite CHECK 不可 ALTER，必须改建表语句；既有表数据零迁移、其余表/列/索引零改动）。
+- **目标验收**（每条可执行）：
+  - `pnpm typecheck` 0 错误
+  - `pnpm test` 全量通过：旧 93 用例全绿 + 新增（questionSchema essay 校验（含空字符串/空白拒绝）、parseFile essay 解析、csv 导入导出 essay 行往返（含逗号/引号/换行转义正确——评审 #8）、essay grade 分流单测（mock AiService：对/错各一、feedback 字段）、评分输出非法（非 JSON/isCorrect 非布尔/缺 feedback）→5xx 不落库、runOnce 超时→5xx 不落库、空/空白答案→400 不调 AI）
+  - routes.smoke.test 新增 essay 链路（导入 essay 题成功→grade 返回 isCorrect+feedback→attempts 落库→wrong.csv 含 essay 行且 answer 列=参考文本、含逗号/引号的用户答案被正确引用）
+  - 本地 curl：essay 题导入→grade 返回 isCorrect+feedback、attempts 落库、wrong.csv essay 行转义正确
+  - 远程抽查：essay 题真实 AI 评分（对/错）+ 批改意见返回
+  - `git diff` 确认：**schema.ts 仅 questions.type CHECK 一行变化**、零新依赖、docker/nginx/compose 零改动
+- **回归验收**（旧功能未坏）：
+  - 全量 93 旧用例保持全绿（客观题判分/导入导出/学情闭环/路由/CSV）
+  - `pnpm --filter @exam/server smoke` 51 断言不降
+  - 客观题三题型（single/multiple/boolean）grade 毫秒级同步契约不变（代码核查 diff：grading/grade.ts 仅注释，规则逻辑零改动；grade 端点客观题分支零改动）
+  - 客观题 CSV 导入导出格式不变（旧模板仍可导入）；**既有 essay 题不存在（新题型），存量数据零影响**
+  - InsightsPage/HistoryPage/错题本/掌握度 代码零改动（仅数据流经 essay 的 is_correct）
+  - 粘贴导入（parseWithAi）旧行为不变：三题型解析结果与现状一致（prompt 仅追加 essay 说明行）
+- **范围红线**：**schema 仅允许 questions.type CHECK 扩增 'essay'（单行 DDL；其余表/列/索引/既有数据零迁移零改动）**；零新依赖（AI 评分复用现有 AiService/runOnce，无队列库）；不做「待批改」异步队列态；不做 0-100 分数；安全项/备份方案/部署架构/nginx/compose 不碰；客观题三题型任何行为不变；v3 教练 prompt（diagnosis/plan/tutor）零改动（仅新增 essay 评分 prompt + parseWithAi 导入 prompt 追加 essay 说明）。
+- **状态**：已确认（2026-08-12，用户确认 v2；评审 2 blocker 清零 + 6 concern 全部采纳）
