@@ -6,6 +6,7 @@ import {
 	INSIGHTS_SYSTEM_PROMPT,
 } from "../ai/insightsPrompts.js";
 import { openSse } from "./sseWriter.js";
+import { buildTrendHistory } from "../insights/snapshotHistory.js";
 
 // Phase 7：错因归纳 + 学情分析（SSE 流式）。
 // 跨源汇集（DEC-12）→ 一次性分析会话 → 流式推报告。分析是无状态一次性任务，
@@ -21,6 +22,14 @@ export function registerInsightsRoutes(
 		"/api/insights/snapshot",
 		async (req) => {
 			return learningDataCollector.collect(req.query?.bankId);
+		},
+	);
+
+	// v3 Slice 4：趋势历史（REST 即时，D34 双维时间序列）
+	app.get<{ Querystring: { bankId?: string } }>(
+		"/api/insights/history",
+		async (req) => {
+			return buildTrendHistory(req.query?.bankId);
 		},
 	);
 

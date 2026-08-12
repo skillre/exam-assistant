@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import type { Bank, LearningSnapshot } from "@exam/shared";
+import type { Bank, LearningSnapshot, TrendHistoryResponse } from "@exam/shared";
 import { api } from "../api/client.js";
 import { streamSse } from "../api/sse.js";
 import { Markdown } from "../components/Markdown.js";
 import { InsightsPanel } from "../components/InsightsPanel.js";
+import { TrendChart } from "../components/TrendChart.js";
 import type { DrillFilter } from "../App.js";
 
 interface Props {
@@ -16,6 +17,7 @@ export function InsightsPage({ onDrillToQuiz }: Props = {}) {
 	const [banks, setBanks] = useState<Bank[]>([]);
 	const [bankId, setBankId] = useState<string>("");
 	const [snapshot, setSnapshot] = useState<LearningSnapshot | null>(null);
+	const [trend, setTrend] = useState<TrendHistoryResponse | null>(null);
 	const [report, setReport] = useState("");
 	const [running, setRunning] = useState(false);
 	const [error, setError] = useState("");
@@ -34,6 +36,14 @@ export function InsightsPage({ onDrillToQuiz }: Props = {}) {
 			.insightsSnapshot(bankId || undefined)
 			.then(setSnapshot)
 			.catch((e) => setError((e as Error).message));
+	}, [bankId]);
+
+	// v3 Slice 4：范围变化即拉趋势（REST 即时，D34 时间序列）
+	useEffect(() => {
+		api
+			.getTrendHistory(bankId || undefined)
+			.then(setTrend)
+			.catch(() => setTrend(null));
 	}, [bankId]);
 
 	async function analyze() {
@@ -92,12 +102,20 @@ export function InsightsPage({ onDrillToQuiz }: Props = {}) {
 			{error && <div className="error">⚠ {error}</div>}
 
 			{hasData ? (
-				<InsightsPanel
-					snapshot={snapshot!}
-					onDrillTag={(tag) =>
-						onDrillToQuiz?.({ bankId: bankId || undefined, tag })
-					}
-				/>
+				<>
+					<InsightsPanel
+						snapshot={snapshot!}
+						onDrillTag={(tag) =>
+							onDrillToQuiz?.({ bankId: bankId || undefined, tag })
+						}
+					/>
+					{/* v3 Slice 4：趋势曲线（练习完成落快照后出现时间序列点） */}
+					{trend && trend.overall.length > 0 && (
+						<div style={{ marginTop: 16 }}>
+							<TrendChart data={trend} />
+						</div>
+					)}
+				</>
 			) : (
 				<p className="muted">暂无做题记录，先去刷几道题吧。</p>
 			)}

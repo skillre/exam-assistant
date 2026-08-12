@@ -21,6 +21,7 @@ import type {
 	WrongBookItem,
 	WrongBookQuery,
 	LearningSnapshot,
+	TrendHistoryResponse,
 	ValidateDraftsResponse,
 	ConnTestResult,
 	BankWithCount,
@@ -166,6 +167,11 @@ export const api = {
 	insightsSnapshot: (bankId?: string) =>
 		req<LearningSnapshot>(
 			`/api/insights/snapshot${bankId ? `?bankId=${encodeURIComponent(bankId)}` : ""}`,
+		),
+	// v3 Slice 4：趋势历史（时间序列，REST 即时）
+	getTrendHistory: (bankId?: string) =>
+		req<TrendHistoryResponse>(
+			`/api/insights/history${bankId ? `?bankId=${encodeURIComponent(bankId)}` : ""}`,
 		),
 
 	// ── v2：导入草稿校验 ──
