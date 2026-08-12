@@ -300,12 +300,20 @@ export function QuizPage({
 							</select>
 						)}
 						{mode === "byTag" && (
-							<input
-								placeholder="知识点标签"
+							<select
 								value={tag}
 								onChange={(e) => setTag(e.target.value)}
 								style={{ flex: 1 }}
-							/>
+							>
+								<option value="">
+									{bankId ? "选择知识点标签" : "请先选择题库"}
+								</option>
+								{tagCounts.map((t) => (
+									<option key={t.tag} value={t.tag}>
+										{t.tag}（{t.count} 题）
+									</option>
+								))}
+							</select>
 						)}
 					</div>
 
