@@ -17,6 +17,8 @@ import { practiceRepo } from "../repositories/practiceRepo.js";
 import { wrongBookRepo } from "../repositories/wrongBookRepo.js";
 import { tutorSessionRepo } from "../repositories/tutorSessionRepo.js";
 import { gradeQuestion } from "../grading/grade.js";
+import { checkMasteryAfterGrade } from "../services/masteryService.js";
+import { snapshotRepo } from "../repositories/snapshotRepo.js";
 
 // v2：按练习范围解析题目集（未做/错过/题型/标签），可乱序。
 function resolveScopeQuestions(scope: PracticeScope): Question[] {
@@ -82,6 +84,7 @@ export function registerQuizRoutes(app: FastifyInstance): void {
 	);
 
 	// 判分 + 落库。attemptId 回传供 tutor/explain 关联（评审 #4）。
+	// v3 Slice 2：判分后挂掌握度闭环钩子（连续答对 3 次→已掌握→联动错题本）。
 	app.post<{ Body: GradeRequest }>("/api/quiz/grade", async (req, reply) => {
 		const { questionId, userAnswer } = req.body ?? {};
 		if (!questionId || userAnswer === undefined) {
@@ -93,10 +96,14 @@ export function registerQuizRoutes(app: FastifyInstance): void {
 		const isCorrect = gradeQuestion(question, userAnswer);
 		const attemptId = attemptRepo.record(questionId, userAnswer, isCorrect);
 
+		// Slice 2: 掌握度闭环（streak 更新 + 达标自动标记，返回刚达标标志）
+		const mastered = checkMasteryAfterGrade(questionId, isCorrect);
+
 		const res: GradeResponse = {
 			attemptId,
 			isCorrect,
 			correctAnswer: question.answer,
+			...(mastered ? { mastered: true } : {}),
 		};
 		return res;
 	});
@@ -200,6 +207,28 @@ export function registerQuizRoutes(app: FastifyInstance): void {
 			const session = practiceRepo.get(req.params.id);
 			if (!session) return reply.code(404).send({ error: "练习会话不存在" });
 			return buildScorecard(session.id, session.questionIds);
+		},
+	);
+
+	// v3 Slice 3（D5）：练习完成 —— 成绩单 + 快照落库（幂等，session_id UNIQUE）。
+	app.post<{ Params: { id: string } }>(
+		"/api/practice/:id/finish",
+		async (req, reply) => {
+			const session = practiceRepo.get(req.params.id);
+			if (!session) return reply.code(404).send({ error: "练习会话不存在" });
+
+			const sc = buildScorecard(session.id, session.questionIds);
+			const snapshot = snapshotRepo.save({
+				sessionId: session.id, // 幂等键（UNIQUE）
+				bankId: session.bankId,
+				total: sc.total,
+				correct: sc.correct,
+				accuracy: sc.accuracy,
+				byTag: sc.byTag,
+				byType: sc.byType,
+			});
+			// 幂等重放（已落过）也返回成绩单；snapshotId 为 null 时前端可忽略
+			return { scorecard: sc, snapshotId: snapshot?.id ?? null };
 		},
 	);
 

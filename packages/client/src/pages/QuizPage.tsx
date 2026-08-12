@@ -147,8 +147,10 @@ export function QuizPage({ initialScope, onNavigateWrong }: Props = {}) {
 	async function finish() {
 		if (!session) return;
 		try {
-			setScorecard(await api.getScorecard(session.id));
-			// P0-2：练习完结即清理续做标记，避免下次进页续做已完结会话
+			// v3 Slice 3：完成即落学情快照（趋势数据点），返回成绩单
+			const resp = await api.finishPractice(session.id);
+			setScorecard(resp.scorecard);
+			// P0-2 保留：练习完结即清理续做标记，避免下次进页续做已完结会话（评审 B2 专项）
 			localStorage.removeItem(LS_KEY);
 		} catch (e) {
 			setError((e as Error).message);

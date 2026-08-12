@@ -16,6 +16,7 @@ import type {
 	PracticeScope,
 	PracticeSession,
 	PracticeGraded,
+	FinishPracticeResponse,
 	Scorecard,
 	WrongBookItem,
 	WrongBookQuery,
@@ -138,6 +139,9 @@ export const api = {
 			body: JSON.stringify({ currentIndex }),
 		}),
 	getScorecard: (id: string) => req<Scorecard>(`/api/practice/${id}/scorecard`),
+	// v3 Slice 3：练习完成（成绩单 + 快照落库）
+	finishPractice: (id: string) =>
+		req<FinishPracticeResponse>(`/api/practice/${id}/finish`, { method: "POST" }),
 	// P0-2：续做恢复已答判分态（questionId → 最新作答含 attemptId）
 	getPracticeGraded: (id: string) =>
 		req<PracticeGraded>(`/api/practice/${id}/graded`),
