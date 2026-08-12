@@ -74,7 +74,7 @@ export const planRepo = {
    * 事务原子。返回新计划。
    */
   createPlan(
-    bankId: string,
+    bankId: string | null,
     title: string,
     description: string | undefined,
     phases: AiPhase[],

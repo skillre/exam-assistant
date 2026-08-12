@@ -94,9 +94,9 @@ CREATE TABLE IF NOT EXISTS insight_snapshots (  -- 学情快照：练习完成�
   created_at  INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS learning_plans (  -- 学习计划（D2 两表：计划 + 任务）
+CREATE TABLE IF NOT EXISTS learning_plans (  -- 学习计划（D2 两表：计划 + 任务）；bank_id 可空=全局计划（学情页"全部题库"范围）
   id          TEXT PRIMARY KEY,
-  bank_id     TEXT NOT NULL REFERENCES banks(id) ON DELETE CASCADE,
+  bank_id     TEXT REFERENCES banks(id) ON DELETE CASCADE,
   title       TEXT NOT NULL,
   description TEXT,
   phases      TEXT NOT NULL,  -- JSON: AiPhase[]（AI 产出快照，供前端展示阶段）

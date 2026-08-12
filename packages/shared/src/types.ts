@@ -281,7 +281,7 @@ export type PlanStatus = 'active' | 'completed' | 'archived';
 
 export interface LearningPlan {
 	id: string;
-	bankId: string;
+	bankId: string | null; // null = 全局计划（学情页"全部题库"范围生成）
 	title: string;
 	description?: string;
 	phases: AiPhase[];

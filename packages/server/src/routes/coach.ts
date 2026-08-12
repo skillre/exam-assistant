@@ -116,7 +116,7 @@ export function registerCoachRoutes(app: FastifyInstance, ai: AiService): void {
       const plan = validatePlan(json);
 
       // 落两表：learning_plans + learning_tasks（createPlan 内展开任务）
-      planRepo.createPlan(bankId ?? '', plan.title, plan.description, plan.phases);
+      planRepo.createPlan(bankId ?? null, plan.title, plan.description, plan.phases);
 
       sse.done();
     } catch (err) {
