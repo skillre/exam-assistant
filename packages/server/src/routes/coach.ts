@@ -14,22 +14,36 @@ import { openSse } from './sseWriter.js';
 // Coach 路由（v3 Slice 5 & 6）：AI 学习教练 —— 错因诊断 + 学习计划生成 + 任务管理。
 // 面板数据走 REST（即时），AI 深度产出按需触发（SSE 流式 + 结构化落库，DEC-35/FR5.2）。
 
-/** 从 AI 返回文本中提取 JSON 数组/对象（容忍 markdown 围栏与前后缀） */
+/**
+ * 从 AI 返回文本中提取 JSON（容忍 markdown 围栏与前后缀）。
+ * 优先提取完整对象（计划产出是对象）；无对象时回退提取数组（诊断产出是数组）。
+ * 修复：原实现先找数组，会把对象内的 phases 数组误抽出（远程实测根因）。
+ */
 function extractJson(text: string): unknown {
+  // 优先：第一个 { 到配对的 }（完整对象，含嵌套）
+  const objStart = text.indexOf('{');
+  if (objStart !== -1) {
+    let depth = 0;
+    for (let i = objStart; i < text.length; i++) {
+      if (text[i] === '{') depth++;
+      else if (text[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          try {
+            return JSON.parse(text.slice(objStart, i + 1));
+          } catch {
+            break; // 配对失败，回退数组策略
+          }
+        }
+      }
+    }
+  }
+  // 回退：数组（诊断输出 [ ... ]）
   const arrStart = text.indexOf('[');
   const arrEnd = text.lastIndexOf(']');
   if (arrStart !== -1 && arrEnd > arrStart) {
     try {
       return JSON.parse(text.slice(arrStart, arrEnd + 1));
-    } catch {
-      /* fallback */
-    }
-  }
-  const objStart = text.indexOf('{');
-  const objEnd = text.lastIndexOf('}');
-  if (objStart !== -1 && objEnd > objStart) {
-    try {
-      return JSON.parse(text.slice(objStart, objEnd + 1));
     } catch {
       /* fallback */
     }
