@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { parseTabFromHash } from "@exam/shared";
 import type { PracticeScope, QuestionType } from "@exam/shared";
 import { QuizPage } from "./pages/QuizPage.js";
 import { BanksPage } from "./pages/BanksPage.js";
@@ -19,10 +20,9 @@ const TABS: { key: Tab; label: string }[] = [
 // 第三批 体验①：轻量 hash 路由（原生 location.hash，不引入依赖）
 const TAB_KEYS = new Set<string>(TABS.map((t) => t.key));
 
-/** 读 URL hash 得合法 tab；非法/空回退刷题页（评审 S5） */
+/** 读 URL hash 得合法 tab；非法/空回退刷题页（评审 S5；解析逻辑在 shared 纯函数可单测） */
 function tabFromHash(): Tab {
-	const h = window.location.hash.replace(/^#\/?/, "");
-	return TAB_KEYS.has(h) ? (h as Tab) : "quiz";
+	return parseTabFromHash(window.location.hash, TABS.map((t) => t.key), "quiz") as Tab;
 }
 
 // 跨页下钻筛选（FR3.4）：学情薄弱点 → 刷题/错题按标签筛选

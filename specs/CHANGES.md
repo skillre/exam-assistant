@@ -91,7 +91,7 @@
   - `pnpm test` 全量通过：现有 58 用例全绿 + 新增 parseFile 用例（JSON/CSV/xlsx 各解析正确 + 畸形输入不抛）+ routes.smoke 用例（HTTP 全链路 + provider 密文）
   - `smoke-e2e.ts` 51 断言保持全绿
   - `git diff` 确认：无新增依赖（nanoid 为删除）、无既有表结构改动、docker/compose 零改动
-  - 远程实测（106.37.96.58:6422）：`#/wrong` 直开错题本、刷新停留当前页、非法 hash 回退刷题页；接口 400 错误显示 message 字段而非裸 "Bad Request"（评审 C7：Fastify 默认 message 为英文，验收不承诺中文）；单选/多选/判断选项区均可键盘操作
+  - 代码级验证（浏览器自动化实测经用户决定取消，2026-08-12）：`parseTabFromHash` 纯函数单测覆盖合法/空/非法 hash（含 #/bogus 回退）；App.tsx 单一 navigate 收口 + hashchange 监听代码核查；QuestionCard 三分支键盘 handler 代码核查；client req() 读 j.message 代码核查
 - **回归验收**（旧功能未坏）：全量测试 + smoke 51 全绿；远程回归：Tab 切换/刷题判分/错题本筛选（applyFilter）/导入/学情四面板与第二批一致；无 hash 时默认进刷题页（兼容旧入口）。
 - **范围红线**：安全项（无鉴权/SSRF/依赖漏洞）与备份方案不碰；部署架构/nginx/compose 不变；**不重建既有表**（竞态用应用层事务，schema 零改动）；不引入新依赖（hash 路由用原生）；AI prompt/行为不变。
 - **状态**：待确认（评审 0 blocker + 7 concern + 5 suggestion 已全部修订：C1 竞态改 in-flight Map 去重、C3 navigate 单一收口、C4 getRow 内联、C5 覆盖 6 处、C6 枚举兜底、C7 验收措辞、S1-S5 全采纳）

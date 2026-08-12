@@ -373,3 +373,10 @@ export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
   multiple: '多选',
   boolean: '判断',
 };
+
+// ── 第三批 体验①：hash 路由解析纯函数（可单测，不依赖 window） ──
+// 输入 location.hash（如 "#/wrong" / "#bogus" / ""），返回合法 tab；非法回退默认。
+export function parseTabFromHash(hash: string, validKeys: readonly string[], fallback: string): string {
+  const h = hash.replace(/^#\/?/, '');
+  return validKeys.includes(h) ? h : fallback;
+}
