@@ -94,7 +94,11 @@
   - 代码级验证（浏览器自动化实测经用户决定取消，2026-08-12）：`parseTabFromHash` 纯函数单测覆盖合法/空/非法 hash（含 #/bogus 回退）；App.tsx 单一 navigate 收口 + hashchange 监听代码核查；QuestionCard 三分支键盘 handler 代码核查；client req() 读 j.message 代码核查
 - **回归验收**（旧功能未坏）：全量测试 + smoke 51 全绿；远程回归：Tab 切换/刷题判分/错题本筛选（applyFilter）/导入/学情四面板与第二批一致；无 hash 时默认进刷题页（兼容旧入口）。
 - **范围红线**：安全项（无鉴权/SSRF/依赖漏洞）与备份方案不碰；部署架构/nginx/compose 不变；**不重建既有表**（竞态用应用层事务，schema 零改动）；不引入新依赖（hash 路由用原生）；AI prompt/行为不变。
-- **状态**：待确认（评审 0 blocker + 7 concern + 5 suggestion 已全部修订：C1 竞态改 in-flight Map 去重、C3 navigate 单一收口、C4 getRow 内联、C5 覆盖 6 处、C6 枚举兜底、C7 验收措辞、S1-S5 全采纳）
+- **状态**：已完成（2026-08-12，auditor 三轮 approved）
+  - 本地：typecheck 0 错误、79 测试全过（58 旧 + parseFile 10 + routes.smoke 7 + routeHash 4）、smoke 51 断言（script）
+  - 契约⑤按用户决定取消浏览器实测，改 parseTabFromHash 纯函数单测（4 用例）+ 代码核查
+  - auditor 否决项修复：useFlashNotice 三处实际调用（原 hook 死代码）、删除题库 confirm 文案统一（669e4f8）
+  - 远程：已部署 healthy；零新增依赖（nanoid 删除）、schema/docker 零改动
 
 ### 2026-08-10 第四批：P3 功能增值（级别：L，待第三批完成后单独走三问）
 
@@ -123,4 +127,8 @@
   - 远程回归：练习续做/判分/错题本标记/导入/SSE 讲解流式/设置页读回模型 与第一批验收时行为一致
   - `git diff` 确认：无新增依赖、既有表结构零改动（仅新增表）、docker/nginx/compose 零改动
 - **范围红线**：继承 FRD Non-Goals——不引入新存储/时序库/向量库、不引入重型图表库（趋势图纯 CSS/SVG）、不做主观题/多端/账号、AI 不做进页面自动全分析（按需触发）；安全项/备份方案不碰；本地不跑构建（DEC-15，远程执行）。
-- **状态**：待确认（评审 0 blocker + 7 concern + 5 suggestion 已全部修订：C1 竞态改 in-flight Map 去重、C3 navigate 单一收口、C4 getRow 内联、C5 覆盖 6 处、C6 枚举兜底、C7 验收措辞、S1-S5 全采纳）
+- **状态**：已完成（2026-08-12，auditor 三轮 approved）
+  - 本地：typecheck 0 错误、79 测试全过（58 旧 + parseFile 10 + routes.smoke 7 + routeHash 4）、smoke 51 断言（script）
+  - 契约⑤按用户决定取消浏览器实测，改 parseTabFromHash 纯函数单测（4 用例）+ 代码核查
+  - auditor 否决项修复：useFlashNotice 三处实际调用（原 hook 死代码）、删除题库 confirm 文案统一（669e4f8）
+  - 远程：已部署 healthy；零新增依赖（nanoid 删除）、schema/docker 零改动
