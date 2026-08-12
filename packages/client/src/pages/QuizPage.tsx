@@ -37,7 +37,9 @@ export function QuizPage({
 	const [mode, setMode] = useState<PracticeMode>("all");
 	const [qType, setQType] = useState<QuestionType | "">("");
 	const [tag, setTag] = useState("");
-	const [tagCounts, setTagCounts] = useState<{ tag: string; count: number }[]>([]);
+	const [tagCounts, setTagCounts] = useState<{ tag: string; count: number }[]>(
+		[],
+	);
 	const [shuffle, setShuffle] = useState(false);
 
 	const [session, setSession] = useState<PracticeSession | null>(null);

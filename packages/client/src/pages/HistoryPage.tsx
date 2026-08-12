@@ -6,7 +6,10 @@ import { api, downloadCsv } from "../api/client.js";
 
 interface Props {
 	// 重练/重开：复用 App 的一键开练链路（setQuizScope + autoStart + navigate quiz）
-	onDrillQuiz: (scope: PracticeHistoryItem["scope"], autoStart: boolean) => void;
+	onDrillQuiz: (
+		scope: PracticeHistoryItem["scope"],
+		autoStart: boolean,
+	) => void;
 	// 继续：写入 localStorage 续做键后跳刷题页（QuizPage 挂载时自动恢复）
 	onResumeSession: (sessionId: string) => void;
 }
@@ -31,7 +34,10 @@ export function HistoryPage({ onDrillQuiz, onResumeSession }: Props) {
 
 	const load = () => {
 		setError("");
-		api.practiceHistory().then(setItems).catch((e) => setError((e as Error).message));
+		api
+			.practiceHistory()
+			.then(setItems)
+			.catch((e) => setError((e as Error).message));
 	};
 
 	useEffect(() => {
@@ -61,7 +67,11 @@ export function HistoryPage({ onDrillQuiz, onResumeSession }: Props) {
 	}
 
 	function isStaticScope(item: PracticeHistoryItem): boolean {
-		return item.scope.mode === "all" || item.scope.mode === "byType" || item.scope.mode === "byTag";
+		return (
+			item.scope.mode === "all" ||
+			item.scope.mode === "byType" ||
+			item.scope.mode === "byTag"
+		);
 	}
 
 	return (
@@ -88,81 +98,75 @@ export function HistoryPage({ onDrillQuiz, onResumeSession }: Props) {
 					<tbody>
 						{items.map((it) => (
 							<Fragment key={it.id}>
-							<tr>
-								<td>{fmtTime(it.createdAt)}</td>
-								<td>{it.bankName}</td>
-								<td>{SCOPE_LABEL[it.scope.mode] ?? it.scope.mode}</td>
-								<td>{it.questionCount}</td>
-								<td>
-									{it.answered > 0
-										? `${Math.round(it.accuracy * 100)}%（${it.correct}/${it.answered}）`
-										: "—"}
-								</td>
-								<td>
-									{it.completed ? (
-										<span className="badge ok">已完成</span>
-									) : (
-										<span className="badge">未完成</span>
-									)}
-								</td>
-								<td>
-									{it.completed || isStaticScope(it) ? (
-										<button className="btn" onClick={() => redo(it)}>
-											{it.completed ? "重练" : "重开"}
-										</button>
-									) : (
-										<button className="btn" onClick={() => resume(it)}>
-											继续
-										</button>
-									)}
-									<button className="btn" onClick={() => openDetail(it.id)}>
-										{detailId === it.id ? "收起" : "详情"}
-									</button>
-								</td>
-							</tr>
-							{detailId === it.id && (
 								<tr>
-									<td colSpan={7}>
-										{detail ? (
-											<div className="card">
-												<h3>成绩单</h3>
-												<p>
-													已答 {detail.answered}/{detail.total} 题，正确{" "}
-													{detail.correct} 题
-													（{detail.answered > 0
-														? `${Math.round(detail.accuracy * 100)}%`
-														: "—"}
-													）
-												</p>
-												{detail.byType.length > 0 && (
-													<p className="muted">
-														按题型：{" "}
-														{detail.byType
-															.map(
-																(t) =>
-																	`${t.type} ${t.correct}/${t.total}`,
-															)
-															.join("、")}
-													</p>
-												)}
-												{detail.byTag.length > 0 && (
-													<p className="muted">
-														按知识点：{" "}
-														{detail.byTag
-															.map(
-																(t) =>
-																	`${t.tag} ${t.correct}/${t.total}`,
-															)
-															.join("、")}
-													</p>
-												)}
-											</div>
+									<td>{fmtTime(it.createdAt)}</td>
+									<td>{it.bankName}</td>
+									<td>{SCOPE_LABEL[it.scope.mode] ?? it.scope.mode}</td>
+									<td>{it.questionCount}</td>
+									<td>
+										{it.answered > 0
+											? `${Math.round(it.accuracy * 100)}%（${it.correct}/${it.answered}）`
+											: "—"}
+									</td>
+									<td>
+										{it.completed ? (
+											<span className="badge ok">已完成</span>
 										) : (
-											<p className="muted">加载中…</p>
+											<span className="badge">未完成</span>
 										)}
 									</td>
+									<td>
+										{it.completed || isStaticScope(it) ? (
+											<button className="btn" onClick={() => redo(it)}>
+												{it.completed ? "重练" : "重开"}
+											</button>
+										) : (
+											<button className="btn" onClick={() => resume(it)}>
+												继续
+											</button>
+										)}
+										<button className="btn" onClick={() => openDetail(it.id)}>
+											{detailId === it.id ? "收起" : "详情"}
+										</button>
+									</td>
 								</tr>
-							)}
+								{detailId === it.id && (
+									<tr>
+										<td colSpan={7}>
+											{detail ? (
+												<div className="card">
+													<h3>成绩单</h3>
+													<p>
+														已答 {detail.answered}/{detail.total} 题，正确{" "}
+														{detail.correct} 题 （
+														{detail.answered > 0
+															? `${Math.round(detail.accuracy * 100)}%`
+															: "—"}
+														）
+													</p>
+													{detail.byType.length > 0 && (
+														<p className="muted">
+															按题型：{" "}
+															{detail.byType
+																.map((t) => `${t.type} ${t.correct}/${t.total}`)
+																.join("、")}
+														</p>
+													)}
+													{detail.byTag.length > 0 && (
+														<p className="muted">
+															按知识点：{" "}
+															{detail.byTag
+																.map((t) => `${t.tag} ${t.correct}/${t.total}`)
+																.join("、")}
+														</p>
+													)}
+												</div>
+											) : (
+												<p className="muted">加载中…</p>
+											)}
+										</td>
+									</tr>
+								)}
 							</Fragment>
 						))}
 					</tbody>
@@ -170,7 +174,8 @@ export function HistoryPage({ onDrillQuiz, onResumeSession }: Props) {
 			)}
 			{items && items.length > 0 && (
 				<p className="muted">
-					只显示最近 30 次练习。数据保存在本机部署的服务器上，与刷题/错题本联动。
+					只显示最近 30
+					次练习。数据保存在本机部署的服务器上，与刷题/错题本联动。
 				</p>
 			)}
 		</div>
@@ -178,5 +183,8 @@ export function HistoryPage({ onDrillQuiz, onResumeSession }: Props) {
 }
 
 export async function exportWrongCsv(): Promise<void> {
-	await downloadCsv("/api/export/wrong.csv", `exam-wrong-${new Date().toISOString().slice(0, 10)}.csv`);
+	await downloadCsv(
+		"/api/export/wrong.csv",
+		`exam-wrong-${new Date().toISOString().slice(0, 10)}.csv`,
+	);
 }
