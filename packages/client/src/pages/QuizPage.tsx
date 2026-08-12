@@ -20,11 +20,13 @@ const LS_KEY = "exam.activePracticeSession";
 interface Props {
 	// 学情下钻/错题跳转带入的初始筛选（FR3.4）
 	initialScope?: Partial<PracticeScope> | null;
+	// v3 Slice 6：一键开练——initialScope 就绪后自动开始练习
+	autoStart?: boolean;
 	onNavigateWrong?: () => void;
 }
 
 // 刷题页 v2：范围选择 → 练习会话 → 题号导航 + 进度续做 → 成绩单。
-export function QuizPage({ initialScope, onNavigateWrong }: Props = {}) {
+export function QuizPage({ initialScope, autoStart, onNavigateWrong }: Props = {}) {
 	const [banks, setBanks] = useState<Bank[]>([]);
 	const [bankId, setBankId] = useState("");
 	const [mode, setMode] = useState<PracticeMode>("all");
@@ -48,15 +50,29 @@ export function QuizPage({ initialScope, onNavigateWrong }: Props = {}) {
 			.catch((e) => setError((e as Error).message));
 	}, []);
 
-	// 下钻进入：预填题库/标签范围
+	// 下钻进入：预填题库/标签范围（v3：含 shuffle/type 全量字段，支持一键开练 scope）
 	useEffect(() => {
 		if (initialScope?.bankId) setBankId(initialScope.bankId);
 		if (initialScope?.mode) setMode(initialScope.mode);
+		if (initialScope?.shuffle) setShuffle(initialScope.shuffle);
 		if (initialScope?.tag) {
 			setTag(initialScope.tag);
 			setMode("byTag");
 		}
+		if (initialScope?.type) {
+			setQType(initialScope.type);
+			setMode("byType");
+		}
 	}, [initialScope]);
+
+	// v3 Slice 6：一键开练——autoStart 时自动开始（延迟到 initialScope 状态生效后）
+	useEffect(() => {
+		if (autoStart && initialScope?.bankId && !session) {
+			const timer = setTimeout(() => start(), 100);
+			return () => clearTimeout(timer);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [autoStart, initialScope?.bankId]);
 
 	// 挂载时尝试续做上次会话（FR1.3）
 	useEffect(() => {

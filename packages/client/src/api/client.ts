@@ -22,6 +22,10 @@ import type {
 	WrongBookQuery,
 	LearningSnapshot,
 	TrendHistoryResponse,
+	DiagnosisResult,
+	LearningPlan,
+	LearningTask,
+	TaskStatus,
 	ValidateDraftsResponse,
 	ConnTestResult,
 	BankWithCount,
@@ -186,6 +190,31 @@ export const api = {
 		req<{ messages: { role: "user" | "assistant"; content: string }[] }>(
 			`/api/tutor/history?questionId=${encodeURIComponent(questionId)}`,
 		),
+
+	// ── v3：AI 学习教练（Slice 5/6）──
+	// 诊断：SSE 流式（POST），latest 走 REST（FR5.3 缓存）
+	runDiagnosis: (bankId?: string) =>
+		req<{ ok: true }>("/api/coach/diagnosis", {
+			method: "POST",
+			body: JSON.stringify(bankId ? { bankId } : {}),
+		}),
+	getDiagnosisLatest: (bankId?: string) =>
+		req<{ results: DiagnosisResult[]; createdAt?: number }>(
+			`/api/coach/diagnosis/latest${bankId ? `?bankId=${encodeURIComponent(bankId)}` : ""}`,
+		),
+	// 计划：SSE 流式生成（POST），列表/任务走 REST
+	runPlan: (bankId?: string) =>
+		req<{ ok: true }>("/api/coach/plan", {
+			method: "POST",
+			body: JSON.stringify(bankId ? { bankId } : {}),
+		}),
+	listPlans: () => req<LearningPlan[]>("/api/coach/plan"),
+	getPlanTasks: (planId: string) => req<LearningTask[]>(`/api/coach/plan/${planId}/tasks`),
+	updateTaskStatus: (taskId: string, status: TaskStatus) =>
+		req<void>(`/api/coach/task/${taskId}/status`, {
+			method: "PATCH",
+			body: JSON.stringify({ status }),
+		}),
 
 	// ── Provider / 模型（DEC-19/20）──
 	listProviders: () => req<Provider[]>("/api/providers"),

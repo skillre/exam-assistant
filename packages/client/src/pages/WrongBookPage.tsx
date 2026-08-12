@@ -14,6 +14,7 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
   const [items, setItems] = useState<WrongBookItem[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [gradedById, setGradedById] = useState<Record<string, GradeResponse>>({});
 
   const [bankId, setBankId] = useState('');
@@ -21,33 +22,52 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
   const [tag, setTag] = useState('');
   const [includeMastered, setIncludeMastered] = useState(false);
 
-  const reload = useCallback(() => {
+  // 纯请求函数（参数显式传入，不依赖筛选 state——挂载时直接可用，避免双请求）
+  const loadWrong = useCallback((q: { bankId?: string; type?: QuestionType; tag?: string; includeMastered?: boolean }) => {
+    setLoading(true);
     setError('');
     api
       .listWrong({
-        bankId: bankId || undefined,
-        type: type || undefined,
-        tag: tag || undefined,
-        includeMastered,
+        bankId: q.bankId,
+        type: q.type,
+        tag: q.tag,
+        includeMastered: q.includeMastered ?? false,
       })
       .then(setItems)
-      .catch((e) => setError((e as Error).message));
-  }, [bankId, type, tag, includeMastered]);
-
-  useEffect(() => {
-    api.listBanks().then(setBanks).catch(() => {});
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
   }, []);
 
-  // 下钻带入的初始筛选（学情薄弱点 → 错题本按标签）
+  // 用户手动改筛选 → 重新加载
+  const reload = useCallback(() => {
+    loadWrong({
+      bankId: bankId || undefined,
+      type: type || undefined,
+      tag: tag || undefined,
+      includeMastered,
+    });
+  }, [bankId, type, tag, includeMastered, loadWrong]);
+
+  useEffect(() => {
+    api
+      .listBanks()
+      .then(setBanks)
+      .catch(() => {});
+  }, []);
+
+  // 挂载：应用下钻筛选 + 只发 1 个 listWrong（闭环⑤：双请求合并）
   useEffect(() => {
     if (initialFilter?.bankId) setBankId(initialFilter.bankId);
     if (initialFilter?.tag) setTag(initialFilter.tag);
     if (initialFilter?.type) setType(initialFilter.type);
-  }, [initialFilter]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
+    loadWrong({
+      bankId: initialFilter?.bankId || undefined,
+      type: initialFilter?.type || undefined,
+      tag: initialFilter?.tag || undefined,
+      includeMastered,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFilter, includeMastered]);
 
   async function onGrade(q: Question, answer: Question['answer']) {
     try {
@@ -114,7 +134,8 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
       </div>
 
       {error && <div className="error">⚠ {error}</div>}
-      {items.length === 0 && <p className="muted">没有符合条件的错题。</p>}
+      {loading && <p className="muted">加载中…</p>}
+      {!loading && items.length === 0 && <p className="muted">没有符合条件的错题。</p>}
 
       {items.map(({ question: q, wrongCount, lastWrongAt, mastered }) => {
         const g = gradedById[q.id];
@@ -137,7 +158,8 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
             <QuestionCard question={q} graded={g ?? null} onSubmit={(a) => onGrade(q, a)} />
             {g && (
               <>
-                <TutorPanel questionId={q.id} attemptId={g.attemptId} />
+                {/* 闭环②：错题本回读该题答疑历史（含此前轮次），可直接继续追问 */}
+                <TutorPanel questionId={q.id} attemptId={g.attemptId} autoLoadHistory />
                 {g.isCorrect && !mastered && (
                   <div className="tutor ok">
                     答对了！可以

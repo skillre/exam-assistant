@@ -76,3 +76,26 @@ docker compose up --build -d    # 改代码后重建
 - **页面能开但讲解报错**：多半是没在「设置」页配 provider 或没选模型；或 Key/Base URL 填错。
 - **SSE 讲解不流式（整段才出）**：确认经的是 web 容器（8080），Nginx 已配 `proxy_buffering off`；别直连 api 端口。
 - **端口冲突**：改 `.env` 的 `WEB_PORT` 再 `docker compose up -d`。
+
+## 七、导入文件模板（JSON / CSV / Excel）
+
+「题库」页可导入结构化文件（JSON/CSV/Excel，走文件导入，不耗 AI）。列约定：
+
+| 列 | 必填 | 说明 |
+| ---- | ------ | ------ |
+| `type` | 是 | `single`（单选）/ `multiple`（多选）/ `boolean`（判断） |
+| `stem` | 是 | 题干文本 |
+| `options` | 单选/多选必填 | 选项文本，多个用 `\|` 分隔（判断题为空） |
+| `answer` | 是 | 单选=选项下标（从 0 起）；多选=下标逗号分隔（如 `0,2`）；判断=`true`/`false` |
+| `explanation` | 否 | 答案解析 |
+| `tags` | 否 | 知识点标签，多个用 `\|` 分隔 |
+
+CSV 示例（首行为表头）：
+
+```csv
+type,stem,options,answer,explanation,tags
+single,1+1=?,1|2,1,等于2,基础
+boolean,地球是圆的,,true,常识,常识
+```
+
+粘贴文本导入（AI 解析）支持任意自然语言描述的题目（如"单选：1+1=？ A.1 B.2 C.3 答案B"），解析结果先预览确认再入库。

@@ -3,11 +3,13 @@ import type { LearningSnapshot } from '@exam/shared';
 interface Props {
   snapshot: LearningSnapshot;
   onDrillTag?: (tag: string) => void;
+  // v3 闭环①：学情→错题本下钻入口
+  onDrillWrong?: () => void;
 }
 
 // v2 FR3.1/3.3：结构化学情面板。纯 CSS/SVG，不引图表库（DEC-26）。
 // 正确率环 + 薄弱知识点条形 + 答疑要点。薄弱点可点击下钻（FR3.4）。
-export function InsightsPanel({ snapshot, onDrillTag }: Props) {
+export function InsightsPanel({ snapshot, onDrillTag, onDrillWrong }: Props) {
   const pct = Math.round(snapshot.accuracy * 100);
   // 薄弱点按错误率降序取前 8
   const weak = [...snapshot.weakTags]
@@ -59,6 +61,16 @@ export function InsightsPanel({ snapshot, onDrillTag }: Props) {
             ))}
           </ul>
         </>
+      )}
+
+      {onDrillWrong && (
+        <button
+          className="btn ghost"
+          style={{ marginTop: 12 }}
+          onClick={onDrillWrong}
+        >
+          查看错题本
+        </button>
       )}
     </div>
   );
