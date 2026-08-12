@@ -131,7 +131,11 @@
   - hash 路由 5 旧 tab + 非法回退 + 下钻链（drillToQuiz/drillToWrong/startTaskQuiz）+ 错题本 applyFilter + 学情四面板与第三批一致（InsightsPage 零改动）
   - QuizPage 其余 mode（all/undone/wrong/byType）与练习闭环（start→答题→判分→finish 快照）行为不变；BanksPage 创建/删除/导入题库流程不变
 - **范围红线**：主观题批改不做（留待评估）；不新增依赖（CSV 手写转义）；既有表零改动（practice_sessions/attempts/schema 零迁移，tags/counts 为读聚合）；AI prompt/行为不变；安全项/备份方案不碰；部署架构/nginx/compose 不变
-- **状态**：已确认（2026-08-12，评审 1 blocker + 7 concern 修订清零后确认）
+- **状态**：已完成（2026-08-12）
+  - 本地：typecheck 0 错误、93 测试全过（csv 8 + practiceRepo 4 + routeHash history + routes.smoke 第四批链路）、smoke 51 断言、curl 全端点验证（BOM/转义/计数/历史/快照联动）
+  - 远程：已部署 healthy；tags/counts/history（7 条真实会话）/export 表头全抽查通过
+  - 过程中修复：routes.smoke.test 的 DATA_DIR 静态 import 锁路径 bug（第三批遗留，曾污染默认 data/）、Content-Disposition 中文文件名 500、listRecent 同毫秒排序 tie-break
+  - 证据：specs/verification/VERIFICATION-2026-08-12-第四批-本地与远程.md
 
 ### 2026-08-10 第二批：v3 AI 学习教练全量落地 + P1 流程闭环补齐（级别：L）
 
