@@ -54,7 +54,29 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
 		[],
 	);
 
-	// 用户手动改筛选 → 重新加载
+	// 用户手动改筛选 → setState + 立即带新值加载（auditor 否决项：onChange 必须联动）
+	const applyFilter = (
+		patch: Partial<{
+			bankId: string;
+			type: QuestionType | "";
+			tag: string;
+			includeMastered: boolean;
+		}>,
+	) => {
+		const next = { bankId, type, tag, includeMastered, ...patch };
+		setBankId(next.bankId);
+		setType(next.type);
+		setTag(next.tag);
+		setIncludeMastered(next.includeMastered);
+		loadWrong({
+			bankId: next.bankId || undefined,
+			type: next.type || undefined,
+			tag: next.tag || undefined,
+			includeMastered: next.includeMastered,
+		});
+	};
+
+	// 手动刷新 / 掌握标记后重载（用当前 state）
 	const reload = useCallback(() => {
 		loadWrong({
 			bankId: bankId || undefined,
@@ -71,7 +93,8 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
 			.catch(() => {});
 	}, []);
 
-	// 挂载：应用下钻筛选 + 只发 1 个 listWrong（闭环⑤：双请求合并）
+	// 挂载：应用下钻筛选 + 只发 1 个 listWrong（闭环⑤：双请求合并）。
+	// 仅依赖 initialFilter（includeMastered 变化走 applyFilter，避免双请求）。
 	useEffect(() => {
 		if (initialFilter?.bankId) setBankId(initialFilter.bankId);
 		if (initialFilter?.tag) setTag(initialFilter.tag);
@@ -80,10 +103,10 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
 			bankId: initialFilter?.bankId || undefined,
 			type: initialFilter?.type || undefined,
 			tag: initialFilter?.tag || undefined,
-			includeMastered,
+			includeMastered: false,
 		});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [initialFilter, includeMastered]);
+	}, [initialFilter]);
 
 	async function onGrade(q: Question, answer: Question["answer"]) {
 		try {
@@ -118,38 +141,43 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
 
 			<div className="card">
 				<div className="row">
-					<select value={bankId} onChange={(e) => setBankId(e.target.value)}>
-						<option value="">全部题库</option>
-						{banks.map((b) => (
-							<option key={b.id} value={b.id}>
-								{b.name}
-							</option>
-						))}
-					</select>
-					<select
-						value={type}
-						onChange={(e) => setType(e.target.value as QuestionType | "")}
-					>
-						<option value="">全部题型</option>
-						<option value="single">单选</option>
-						<option value="multiple">多选</option>
-						<option value="boolean">判断</option>
-					</select>
-					<input
-						placeholder="按知识点标签筛选"
-						value={tag}
-						onChange={(e) => setTag(e.target.value)}
-						style={{ flex: 1, minWidth: 140 }}
-					/>
-					<label className="row" style={{ cursor: "pointer" }}>
-						<input
-							type="checkbox"
-							checked={includeMastered}
-							onChange={(e) => setIncludeMastered(e.target.checked)}
-							style={{ width: "auto" }}
-						/>
-						<span className="muted">显示已掌握</span>
-					</label>
+		  <select
+			  value={bankId}
+			  onChange={(e) => applyFilter({ bankId: e.target.value })}
+		  >
+			<option value="">全部题库</option>
+			{banks.map((b) => (
+			  <option key={b.id} value={b.id}>
+				{b.name}
+			  </option>
+			))}
+		  </select>
+		  <select
+			  value={type}
+			  onChange={(e) =>
+				applyFilter({ type: e.target.value as QuestionType | "" })
+			  }
+		  >
+			<option value="">全部题型</option>
+			<option value="single">单选</option>
+			<option value="multiple">多选</option>
+			<option value="boolean">判断</option>
+		  </select>
+		  <input
+			placeholder="按知识点标签筛选"
+			value={tag}
+			onChange={(e) => applyFilter({ tag: e.target.value })}
+			style={{ flex: 1, minWidth: 140 }}
+		  />
+		  <label className="row" style={{ cursor: "pointer" }}>
+			<input
+			  type="checkbox"
+			  checked={includeMastered}
+			  onChange={(e) => applyFilter({ includeMastered: e.target.checked })}
+			  style={{ width: "auto" }}
+			/>
+			<span className="muted">显示已掌握</span>
+		  </label>
 				</div>
 			</div>
 
