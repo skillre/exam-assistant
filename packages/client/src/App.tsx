@@ -6,14 +6,16 @@ import { BanksPage } from "./pages/BanksPage.js";
 import { WrongBookPage } from "./pages/WrongBookPage.js";
 import { InsightsPage } from "./pages/InsightsPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
+import { HistoryPage } from "./pages/HistoryPage.js";
 
-type Tab = "quiz" | "banks" | "wrong" | "insights" | "settings";
+type Tab = "quiz" | "banks" | "wrong" | "insights" | "settings" | "history";
 
 const TABS: { key: Tab; label: string }[] = [
 	{ key: "quiz", label: "刷题" },
 	{ key: "banks", label: "题库" },
 	{ key: "wrong", label: "错题本" },
 	{ key: "insights", label: "学情" },
+	{ key: "history", label: "历史" },
 	{ key: "settings", label: "设置" },
 ];
 
@@ -121,6 +123,17 @@ export function App() {
 						onDrillToQuiz={drillToQuiz}
 						onDrillToWrong={drillToWrong}
 						onStartTask={startTaskQuiz}
+					/>
+				)}
+				{tab === "history" && (
+					<HistoryPage
+						onDrillQuiz={startTaskQuiz}
+						onResumeSession={(sessionId) => {
+							// 第四批 ②：继续 —— 写入现有续做键，QuizPage 挂载时自动恢复
+							localStorage.setItem("exam.activePracticeSession", sessionId);
+							setAutoStart(false);
+							navigate("quiz");
+						}}
 					/>
 				)}
 				{tab === "settings" && <SettingsPage />}

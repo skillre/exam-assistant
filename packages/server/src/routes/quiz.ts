@@ -18,6 +18,7 @@ import { wrongBookRepo } from "../repositories/wrongBookRepo.js";
 import { tutorSessionRepo } from "../repositories/tutorSessionRepo.js";
 import { gradeQuestion } from "../grading/grade.js";
 import { checkMasteryAfterGrade } from "../services/masteryService.js";
+import { toCsv } from "../export/csv.js";
 import { snapshotRepo } from "../repositories/snapshotRepo.js";
 
 // v2：按练习范围解析题目集（未做/错过/题型/标签），可乱序。
@@ -256,6 +257,80 @@ export function registerQuizRoutes(app: FastifyInstance): void {
 		},
 	);
 
+	// ── 第四批 ①：CSV 导出（RFC4180 手写转义，列与导入模板同构：type,stem,options,answer,explanation,tags）──
+	app.get<{ Params: { bankId: string } }>(
+		"/api/export/:bankId/questions.csv",
+		async (req, reply) => {
+			const bank = bankRepo.get(req.params.bankId);
+			if (!bank) return reply.code(404).send({ error: "题库不存在" });
+			const questions = questionRepo.listByBank(bank.id);
+			const rows: unknown[][] = [
+				["type", "stem", "options", "answer", "explanation", "tags"],
+				...questions.map((q) => [
+					q.type,
+					q.stem,
+					JSON.stringify(q.options ?? []),
+					JSON.stringify(q.answer),
+					q.explanation ?? "",
+					(q.tags ?? []).join("|"),
+				]),
+			];
+			// filename 用 ASCII（bank.id），中文文件名由前端 a.download 指定（HTTP 头不允许非 ASCII）
+			return reply
+				.header("Content-Type", "text/csv; charset=utf-8")
+				.header(
+					"Content-Disposition",
+					`attachment; filename="exam-${bank.id}.csv"`,
+				)
+				.send(toCsv(rows));
+		},
+	);
+
+	// 第四批 ①：全库错题导出（各题最新一次作答 is_correct=0），追加 wrong_answer 列。
+	app.get("/api/export/wrong.csv", async (_req, reply) => {
+		const questions = questionRepo.listAll();
+		const latest = attemptRepo.latestWithAnswers(questions.map((q) => q.id));
+		const wrong = questions.filter((q) => {
+			const att = latest.get(q.id);
+			return att !== undefined && !att.isCorrect;
+		});
+		const rows: unknown[][] = [
+			["type", "stem", "options", "answer", "explanation", "tags", "wrong_answer"],
+			...wrong.map((q) => [
+				q.type,
+				q.stem,
+				JSON.stringify(q.options ?? []),
+				JSON.stringify(q.answer),
+				q.explanation ?? "",
+				(q.tags ?? []).join("|"),
+				JSON.stringify(latest.get(q.id)!.userAnswer),
+			]),
+		];
+		return reply
+			.header("Content-Type", "text/csv; charset=utf-8")
+			.header(
+				"Content-Disposition",
+				`attachment; filename="exam-wrong-${new Date().toISOString().slice(0, 10)}.csv"`,
+			)
+			.send(toCsv(rows));
+	});
+
+	// ── 第四批 ②：练习历史（最近 30 个会话，倒序；正确率复用 buildScorecard）──
+	app.get("/api/history/practices", async () => {
+		const recent = practiceRepo.listRecent(30);
+		return recent.map((r) => {
+			const session = practiceRepo.get(r.id);
+			const score = session ? buildScorecard(session.id, session.questionIds) : null;
+			return {
+				...r,
+				correct: score?.correct ?? 0,
+				total: score?.total ?? 0,
+				accuracy: score?.accuracy ?? 0,
+				answered: score?.answered ?? 0,
+			};
+		});
+	});
+
 	// 标记/取消错题"已掌握"（软标记，DEC-28）
 	// 删除题库：先删该库答疑 JSONL 文件（避免孤儿），再删库（外键 CASCADE
 	// 清 questions/attempts/tutor_sessions 行，DEC-13）。
@@ -280,7 +355,8 @@ export function registerQuizRoutes(app: FastifyInstance): void {
 }
 
 // v2：组装成绩单 —— 每题取最新一次作答，聚合正确率与分布。
-function buildScorecard(sessionId: string, questionIds: string[]): Scorecard {
+// 第四批：模块私有改导出（history 路由复用；逻辑零改动）。
+export function buildScorecard(sessionId: string, questionIds: string[]): Scorecard {
 	const latest = attemptRepo.latestByQuestion(questionIds);
 	const byTypeMap = new Map<QuestionType, { total: number; correct: number }>();
 	const byTagMap = new Map<string, { total: number; correct: number }>();

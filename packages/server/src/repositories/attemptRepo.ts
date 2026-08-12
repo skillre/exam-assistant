@@ -146,6 +146,34 @@ export const attemptRepo = {
 	},
 
 	/**
+	 * 第四批 ①：给定题目 id 集合，取每题最新一次作答（含 userAnswer），供错题导出。
+	 */
+	latestWithAnswers(
+		questionIds: string[],
+	): Map<string, { isCorrect: boolean; userAnswer: AnswerValue }> {
+		const result = new Map<
+			string,
+			{ isCorrect: boolean; userAnswer: AnswerValue }
+		>();
+		if (questionIds.length === 0) return result;
+		const stmt = db.prepare(
+			`SELECT is_correct, user_answer FROM attempts
+       WHERE question_id = ? ORDER BY answered_at DESC LIMIT 1`,
+		);
+		for (const qid of questionIds) {
+			const row = stmt.get(qid) as
+				| { is_correct: number; user_answer: string }
+				| undefined;
+			if (row)
+				result.set(qid, {
+					isCorrect: row.is_correct === 1,
+					userAnswer: parseJsonSafe(row.user_answer, 0 as AnswerValue),
+				});
+		}
+		return result;
+	},
+
+	/**
 	 * P0-2：给定题目 id 集合，取每题最新一次作答的完整信息（含 attemptId），
 	 * 供练习会话续做恢复判分态（gradedById 填充）。
 	 */

@@ -4,11 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
-import { registerProviderRoutes } from "./routes/providers.js";
-import { registerModelRoutes } from "./routes/models.js";
-import { registerImportRoutes } from "./routes/import.js";
-import { registerQuizRoutes } from "./routes/quiz.js";
-import { registerBankRoutes } from "./routes/banks.js";
 
 // 第三批 卫生⑪：路由层 HTTP 冒烟（审计 R7：路由层 0 测试）。
 // 自建 Fastify 按 register*Routes 组装 + AiService 桩（不依赖真实 AI / provider Key），
@@ -35,12 +30,19 @@ const aiStub = {
 
 beforeAll(async () => {
 	tempDir = mkdtempSync(join(tmpdir(), "exam-routes-"));
+	// 关键：必须在任何路由模块加载前设置 DATA_DIR（config/paths.ts 在模块加载时锁定路径）。
+	// 第三批时路由为静态 import，beforeAll 设置晚于模块求值，测试数据曾写入默认 data/ 目录。
 	process.env.DATA_DIR = tempDir;
 	const { getDb } = await import("./db/index.js");
 	getDb();
 
 	app = Fastify();
 	await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } });
+	const { registerProviderRoutes } = await import("./routes/providers.js");
+	const { registerModelRoutes } = await import("./routes/models.js");
+	const { registerImportRoutes } = await import("./routes/import.js");
+	const { registerQuizRoutes } = await import("./routes/quiz.js");
+	const { registerBankRoutes } = await import("./routes/banks.js");
 	registerProviderRoutes(app, aiStub);
 	registerModelRoutes(app, aiStub);
 	registerImportRoutes(app, aiStub);
@@ -194,5 +196,92 @@ describe("HTTP 全链路（routes.smoke，评审 S3）", () => {
 		expect(qs.statusCode).toBe(404);
 		const wrong = await app.inject({ method: "GET", url: "/api/quiz/wrong" });
 		expect((wrong.json() as unknown[]).length).toBe(0);
+	});
+
+	// ── 第四批：导出 / 历史 / 标签计数（在删库级联测试之后追加，此时库已删——故先重建并单独造数）──
+	it("第四批：导出 questions.csv / wrong.csv / history / tags/counts", async () => {
+		// 重建题库与题目（删库级联后场景）
+		const nb = await post("/api/banks", { name: "第四批库" });
+		expect(nb.statusCode).toBe(201);
+		const nbId = (nb.json() as { id: string }).id;
+		const imp2 = await post("/api/import/commit", {
+			bankId: nbId,
+			questions: [
+				{
+					type: "single",
+					stem: "含逗号,与引号\"题\"?",
+					options: ["A", "B"],
+					answer: 0,
+					explanation: "解释含\n换行",
+					tags: ["第四批标签"],
+				},
+			],
+		});
+		expect(imp2.statusCode).toBe(201);
+		const qs = await app.inject({
+			method: "GET",
+			url: `/api/banks/${nbId}/questions`,
+		});
+		const qid = (qs.json() as Array<{ id: string }>)[0]!.id;
+		await post("/api/quiz/grade", { questionId: qid, userAnswer: 1 }); // 答错 → 进错题
+
+		// questions.csv：表头 6 列 + 转义（逗号/引号/换行）
+		const csv = await app.inject({
+			method: "GET",
+			url: `/api/export/${nbId}/questions.csv`,
+		});
+		expect(csv.statusCode).toBe(200);
+		const text = csv.body;
+		expect(text.startsWith("\uFEFF")).toBe(true); // BOM
+		expect(text).toContain("type,stem,options,answer,explanation,tags");
+		expect(text).toContain('"含逗号,与引号""题""?"');
+		expect(text).toContain('"解释含\n换行"');
+
+		// wrong.csv：7 列含 wrong_answer，且含刚答错的题
+		const wcsv = await app.inject({ method: "GET", url: "/api/export/wrong.csv" });
+		expect(wcsv.statusCode).toBe(200);
+		expect(wcsv.body).toContain("wrong_answer");
+		expect(wcsv.body).toContain('"含逗号,与引号""题""?"');
+
+		// tags/counts：只含该库标签且计数正确
+		const tc = await app.inject({
+			method: "GET",
+			url: `/api/tags/counts?bankId=${nbId}`,
+		});
+		expect(tc.statusCode).toBe(200);
+		expect(tc.json()).toEqual([{ tag: "第四批标签", count: 1 }]);
+		const tcBad = await app.inject({ method: "GET", url: "/api/tags/counts" });
+		expect(tcBad.statusCode).toBe(400); // bankId 必填
+
+		// history：出现本次练习会话，completed=false（未 finish），有 correct/total
+		const ses = await post("/api/practice/start", {
+			scope: { bankId: nbId, mode: "all" },
+		});
+		const sid = (ses.json() as { id: string }).id;
+		const hist = await app.inject({ method: "GET", url: "/api/history/practices" });
+		expect(hist.statusCode).toBe(200);
+		const items = hist.json() as Array<{
+			id: string;
+			bankName: string;
+			completed: boolean;
+			correct: number;
+			total: number;
+		}>;
+		expect(items.length).toBeGreaterThan(0);
+		const mine = items.find((x) => x.bankName === "第四批库")!;
+		expect(mine.id).toBe(sid);
+		expect(mine.completed).toBe(false);
+		expect(mine.total).toBeGreaterThan(0);
+		expect(typeof mine.correct).toBe("number");
+
+		// finish 后 history completed=true（闭环：历史与快照联动）
+		const fin = await app.inject({
+			method: "POST",
+			url: `/api/practice/${sid}/finish`,
+		});
+		expect(fin.statusCode).toBe(200);
+		const hist2 = await app.inject({ method: "GET", url: "/api/history/practices" });
+		const items2 = hist2.json() as Array<{ id: string; completed: boolean }>;
+		expect(items2.find((x) => x.id === sid)!.completed).toBe(true);
 	});
 });

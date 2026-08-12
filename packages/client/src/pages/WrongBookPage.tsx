@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { exportWrongCsv } from "./HistoryPage.js";
 import { QUESTION_TYPE_LABEL } from '@exam/shared';
 import type {
 	Bank,
@@ -135,6 +136,14 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
 			<div className="row">
 				<h1>错题本</h1>
 				<span className="spacer" />
+				<button
+					className="btn ghost"
+					onClick={() =>
+						exportWrongCsv().catch((e) => setError((e as Error).message))
+					}
+				>
+					导出错题 CSV
+				</button>
 				<button className="btn ghost" onClick={reload}>
 					刷新
 				</button>

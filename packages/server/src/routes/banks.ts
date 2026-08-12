@@ -28,6 +28,25 @@ export function registerBankRoutes(app: FastifyInstance): void {
   // 全库已用标签集合，供下拉建议 + 学情/批量打标签复用
   app.get('/api/tags', async () => questionRepo.allTags());
 
+  // 第四批 ③：按题库统计标签题量（{tag,count}[]，count=0 不返回）。
+  // 前端 QuizPage byTag 下拉按当前选中 bank 拉取，避免跨库标签触发 409。
+  app.get<{ Querystring: { bankId?: string } }>(
+    '/api/tags/counts',
+    async (req, reply) => {
+      const bankId = req.query.bankId;
+      if (!bankId) return reply.code(400).send({ error: 'bankId 必填' });
+      const bank = bankRepo.get(bankId);
+      if (!bank) return reply.code(404).send({ error: '题库不存在' });
+      const counts = new Map<string, number>();
+      for (const q of questionRepo.listByBank(bankId)) {
+        for (const tag of q.tags ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+      return [...counts.entries()]
+        .map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => a.tag.localeCompare(b.tag));
+    },
+  );
+
   // 新建空题库（管理页可先建库再导入）
   app.post<{ Body: CreateBankRequest }>('/api/banks', async (req, reply) => {
     const name = req.body?.name?.trim();

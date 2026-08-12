@@ -18,6 +18,7 @@ import type {
 	PracticeGraded,
 	FinishPracticeResponse,
 	Scorecard,
+	PracticeHistoryItem,
 	WrongBookItem,
 	WrongBookQuery,
 	LearningSnapshot,
@@ -238,6 +239,39 @@ export const api = {
 			method: "POST",
 			body: JSON.stringify(body),
 		}),
+
+	// 第四批 ②：练习历史（最近 30 个会话，倒序）
+	practiceHistory: () => req<PracticeHistoryItem[]>("/api/history/practices"),
+
+	// 第四批 ③：按题库统计标签题量（byTag 下拉数据源）
+	tagsWithCounts: (bankId: string) =>
+		req<{ tag: string; count: number }[]>(
+			`/api/tags/counts?bankId=${encodeURIComponent(bankId)}`,
+		),
 };
+
+/** 第四批 ①：CSV 下载（错误文案与 req 一致：先读 j.message 再 j.error）。 */
+export async function downloadCsv(url: string, filename: string): Promise<void> {
+	const resp = await fetch(url);
+	if (!resp.ok) {
+		let msg = `下载失败 (${resp.status})`;
+		try {
+			const j = await resp.json();
+			if (j?.message) msg = j.message;
+			else if (j?.error) msg = j.error;
+		} catch {
+			/* ignore */
+		}
+		throw new Error(msg);
+	}
+	const blob = await resp.blob();
+	const a = document.createElement("a");
+	a.href = URL.createObjectURL(blob);
+	a.download = filename;
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(a.href);
+}
 
 export type { QuestionDraft };

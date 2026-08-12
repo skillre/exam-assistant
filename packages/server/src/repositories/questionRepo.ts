@@ -38,6 +38,14 @@ export const questionRepo = {
     return rows.map(toQuestion);
   },
 
+  /** 第四批 ①：全库题目（错题导出/标签计数用）。 */
+  listAll(): Question[] {
+    const rows = db
+      .prepare('SELECT * FROM questions ORDER BY created_at')
+      .all() as QuestionRow[];
+    return rows.map(toQuestion);
+  },
+
   get(id: string): Question | undefined {
     const row = db.prepare('SELECT * FROM questions WHERE id = ?').get(id) as
       | QuestionRow

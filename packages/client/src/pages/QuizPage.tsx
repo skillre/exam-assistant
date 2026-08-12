@@ -37,6 +37,7 @@ export function QuizPage({
 	const [mode, setMode] = useState<PracticeMode>("all");
 	const [qType, setQType] = useState<QuestionType | "">("");
 	const [tag, setTag] = useState("");
+	const [tagCounts, setTagCounts] = useState<{ tag: string; count: number }[]>([]);
 	const [shuffle, setShuffle] = useState(false);
 
 	const [session, setSession] = useState<PracticeSession | null>(null);
@@ -54,6 +55,18 @@ export function QuizPage({
 			.then(setBanks)
 			.catch((e) => setError((e as Error).message));
 	}, []);
+
+	// 第四批 ③：bank 变化时按库拉取标签题量（跨库标签会 409，故按当前库过滤）
+	useEffect(() => {
+		if (!bankId) {
+			setTagCounts([]);
+			return;
+		}
+		api
+			.tagsWithCounts(bankId)
+			.then(setTagCounts)
+			.catch(() => setTagCounts([]));
+	}, [bankId]);
 
 	// 下钻进入：预填题库/标签范围（v3：含 shuffle/type 全量字段，支持一键开练 scope）
 	useEffect(() => {

@@ -60,4 +60,44 @@ export const practiceRepo = {
   remove(id: string): void {
     db.prepare('DELETE FROM practice_sessions WHERE id = ?').run(id);
   },
+
+  /** 第四批 ②：最近 N 个练习会话（倒序），含题库名与完成态（insight_snapshots 落过快照即完成）。 */
+  listRecent(limit: number): Array<{
+    id: string;
+    bankId: string;
+    bankName: string;
+    questionCount: number;
+    scope: PracticeScope;
+    createdAt: number;
+    completed: boolean;
+  }> {
+    const rows = db
+      .prepare(
+        `SELECT ps.id, ps.bank_id, ps.question_ids, ps.current_index, ps.scope, ps.created_at,
+                b.name AS bank_name, s.session_id IS NOT NULL AS completed
+         FROM practice_sessions ps
+         LEFT JOIN banks b ON b.id = ps.bank_id
+         LEFT JOIN insight_snapshots s ON s.session_id = ps.id
+         ORDER BY ps.created_at DESC, ps.rowid DESC
+         LIMIT ?`,
+      )
+      .all(limit) as Array<{
+      id: string;
+      bank_id: string;
+      question_ids: string;
+      scope: string;
+      created_at: number;
+      bank_name: string | null;
+      completed: number;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      bankId: r.bank_id,
+      bankName: r.bank_name ?? '(已删除题库)',
+      questionCount: (JSON.parse(r.question_ids) as string[]).length,
+      scope: JSON.parse(r.scope) as PracticeScope,
+      createdAt: r.created_at,
+      completed: r.completed === 1,
+    }));
+  },
 };

@@ -294,6 +294,21 @@ export interface LearningTask {
 	completedAt?: number;
 }
 
+// ── 第四批 ②：练习历史列表项（/api/history/practices） ───
+export interface PracticeHistoryItem {
+	id: string;
+	bankId: string;
+	bankName: string;
+	questionCount: number;
+	scope: PracticeScope;
+	createdAt: number;
+	completed: boolean;
+	correct: number;
+	total: number;
+	accuracy: number;
+	answered: number;
+}
+
 // ── v3：深度错因诊断（FR1 — DEC-33，固定枚举，扁平单题） ───
 export type ErrorCategory =
 	| "concept_confusion"

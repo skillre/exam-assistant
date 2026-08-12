@@ -3,6 +3,7 @@ import { QUESTION_TYPE_LABEL } from '@exam/shared';
 import type { BankWithCount, Question, QuestionDraft } from '@exam/shared';
 import { api } from '../api/client.js';
 import { useFlashNotice } from '../utils.js';
+import { downloadCsv } from '../api/client.js';
 import { DraftEditor } from '../components/DraftEditor.js';
 import { ImportPanel } from '../components/ImportPanel.js';
 
@@ -149,6 +150,17 @@ export function BanksPage() {
               <div className="spacer" />
               <button className="btn ghost" onClick={() => setSelectedBankId(b.id)}>
                 管理题目
+              </button>
+              <button
+                className="btn ghost"
+                onClick={() =>
+                  downloadCsv(
+                    `/api/export/${encodeURIComponent(b.id)}/questions.csv`,
+                    `exam-${b.name}-${new Date().toISOString().slice(0, 10)}.csv`,
+                  ).catch((e) => flash((e as Error).message))
+                }
+              >
+                导出 CSV
               </button>
               <button className="btn ghost" onClick={() => renameBank(b)}>
                 重命名
