@@ -141,43 +141,45 @@ export function WrongBookPage({ initialFilter }: Props = {}) {
 
 			<div className="card">
 				<div className="row">
-		  <select
-			  value={bankId}
-			  onChange={(e) => applyFilter({ bankId: e.target.value })}
-		  >
-			<option value="">全部题库</option>
-			{banks.map((b) => (
-			  <option key={b.id} value={b.id}>
-				{b.name}
-			  </option>
-			))}
-		  </select>
-		  <select
-			  value={type}
-			  onChange={(e) =>
-				applyFilter({ type: e.target.value as QuestionType | "" })
-			  }
-		  >
-			<option value="">全部题型</option>
-			<option value="single">单选</option>
-			<option value="multiple">多选</option>
-			<option value="boolean">判断</option>
-		  </select>
-		  <input
-			placeholder="按知识点标签筛选"
-			value={tag}
-			onChange={(e) => applyFilter({ tag: e.target.value })}
-			style={{ flex: 1, minWidth: 140 }}
-		  />
-		  <label className="row" style={{ cursor: "pointer" }}>
-			<input
-			  type="checkbox"
-			  checked={includeMastered}
-			  onChange={(e) => applyFilter({ includeMastered: e.target.checked })}
-			  style={{ width: "auto" }}
-			/>
-			<span className="muted">显示已掌握</span>
-		  </label>
+					<select
+						value={bankId}
+						onChange={(e) => applyFilter({ bankId: e.target.value })}
+					>
+						<option value="">全部题库</option>
+						{banks.map((b) => (
+							<option key={b.id} value={b.id}>
+								{b.name}
+							</option>
+						))}
+					</select>
+					<select
+						value={type}
+						onChange={(e) =>
+							applyFilter({ type: e.target.value as QuestionType | "" })
+						}
+					>
+						<option value="">全部题型</option>
+						<option value="single">单选</option>
+						<option value="multiple">多选</option>
+						<option value="boolean">判断</option>
+					</select>
+					<input
+						placeholder="按知识点标签筛选"
+						value={tag}
+						onChange={(e) => applyFilter({ tag: e.target.value })}
+						style={{ flex: 1, minWidth: 140 }}
+					/>
+					<label className="row" style={{ cursor: "pointer" }}>
+						<input
+							type="checkbox"
+							checked={includeMastered}
+							onChange={(e) =>
+								applyFilter({ includeMastered: e.target.checked })
+							}
+							style={{ width: "auto" }}
+						/>
+						<span className="muted">显示已掌握</span>
+					</label>
 				</div>
 			</div>
 
