@@ -26,7 +26,11 @@ interface Props {
 }
 
 // 刷题页 v2：范围选择 → 练习会话 → 题号导航 + 进度续做 → 成绩单。
-export function QuizPage({ initialScope, autoStart, onNavigateWrong }: Props = {}) {
+export function QuizPage({
+	initialScope,
+	autoStart,
+	onNavigateWrong,
+}: Props = {}) {
 	const [banks, setBanks] = useState<Bank[]>([]);
 	const [bankId, setBankId] = useState("");
 	const [mode, setMode] = useState<PracticeMode>("all");

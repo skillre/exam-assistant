@@ -239,13 +239,21 @@ try {
 	const { snapshotRepo } = await import("./src/repositories/snapshotRepo.js");
 	const { planRepo } = await import("./src/repositories/planRepo.js");
 	const { diagnosisRepo } = await import("./src/repositories/diagnosisRepo.js");
-	const { checkMasteryAfterGrade } = await import("./src/services/masteryService.js");
+	const { checkMasteryAfterGrade } = await import(
+		"./src/services/masteryService.js"
+	);
 
 	ok("v3-mastery streak递增", masteryRepo.incrementCorrect(q1!.id) === 1);
-	ok("v3-mastery 连续3次达标",
-		masteryRepo.incrementCorrect(q1!.id) === 2 && checkMasteryAfterGrade(q1!.id, true) === true);
+	ok(
+		"v3-mastery 连续3次达标",
+		masteryRepo.incrementCorrect(q1!.id) === 2 &&
+			checkMasteryAfterGrade(q1!.id, true) === true,
+	);
 	const mstate = masteryRepo.getByQuestion(q1!.id)!;
-	ok("v3-mastery 状态落库", mstate.consecutiveCorrect === 3 && mstate.mastered === true);
+	ok(
+		"v3-mastery 状态落库",
+		mstate.consecutiveCorrect === 3 && mstate.mastered === true,
+	);
 
 	const snapV3 = snapshotRepo.save({
 		sessionId: "smoke-s1",
@@ -256,26 +264,49 @@ try {
 		byTag: [{ tag: "基础", total: 10, correct: 7 }],
 		byType: [{ type: "single", total: 10, correct: 7 }],
 	});
-	ok("v3-snapshot 落库+幂等",
-		snapV3 !== null && snapshotRepo.save({ sessionId: "smoke-s1", bankId: bankB.id, total: 10, correct: 7, accuracy: 0.7, byTag: [], byType: [] }) === null);
+	ok(
+		"v3-snapshot 落库+幂等",
+		snapV3 !== null &&
+			snapshotRepo.save({
+				sessionId: "smoke-s1",
+				bankId: bankB.id,
+				total: 10,
+				correct: 7,
+				accuracy: 0.7,
+				byTag: [],
+				byType: [],
+			}) === null,
+	);
 	ok("v3-snapshot listAll", snapshotRepo.listAll(bankB.id).length === 1);
 
 	const plan = planRepo.createPlan(bankB.id, "冒烟计划", undefined, [
-		{ title: "阶段1", tasks: [{ title: "任务1", scope: { bankId: bankB.id, mode: "all" } }] },
+		{
+			title: "阶段1",
+			tasks: [{ title: "任务1", scope: { bankId: bankB.id, mode: "all" } }],
+		},
 	]);
 	ok("v3-plan 两表落库", planRepo.listTasksByPlan(plan.id).length === 1);
-	ok("v3-plan 任务状态流转",
-		planRepo.updateTaskStatus(planRepo.listTasksByPlan(plan.id)[0]!.id, "done") === true);
+	ok(
+		"v3-plan 任务状态流转",
+		planRepo.updateTaskStatus(
+			planRepo.listTasksByPlan(plan.id)[0]!.id,
+			"done",
+		) === true,
+	);
 
-	const dId = diagnosisRepo.save(null, [{
-		questionId: q1!.id,
-		stem: "地球是圆的",
-		userAnswer: "B. 错",
-		correctAnswer: "A. 对",
-		errorCategory: "knowledge_gap",
-	}]);
-	ok("v3-diagnosis 落库+读取",
-		!!dId && diagnosisRepo.getLatest()?.results.length === 1);
+	const dId = diagnosisRepo.save(null, [
+		{
+			questionId: q1!.id,
+			stem: "地球是圆的",
+			userAnswer: "B. 错",
+			correctAnswer: "A. 对",
+			errorCategory: "knowledge_gap",
+		},
+	]);
+	ok(
+		"v3-diagnosis 落库+读取",
+		!!dId && diagnosisRepo.getLatest()?.results.length === 1,
+	);
 
 	console.log(
 		`\n端到端冒烟通过（${results.length} 项断言）—— 数据目录: ${dir}\n`,

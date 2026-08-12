@@ -146,7 +146,9 @@ export const api = {
 	getScorecard: (id: string) => req<Scorecard>(`/api/practice/${id}/scorecard`),
 	// v3 Slice 3：练习完成（成绩单 + 快照落库）
 	finishPractice: (id: string) =>
-		req<FinishPracticeResponse>(`/api/practice/${id}/finish`, { method: "POST" }),
+		req<FinishPracticeResponse>(`/api/practice/${id}/finish`, {
+			method: "POST",
+		}),
 	// P0-2：续做恢复已答判分态（questionId → 最新作答含 attemptId）
 	getPracticeGraded: (id: string) =>
 		req<PracticeGraded>(`/api/practice/${id}/graded`),
@@ -209,7 +211,8 @@ export const api = {
 			body: JSON.stringify(bankId ? { bankId } : {}),
 		}),
 	listPlans: () => req<LearningPlan[]>("/api/coach/plan"),
-	getPlanTasks: (planId: string) => req<LearningTask[]>(`/api/coach/plan/${planId}/tasks`),
+	getPlanTasks: (planId: string) =>
+		req<LearningTask[]>(`/api/coach/plan/${planId}/tasks`),
 	updateTaskStatus: (taskId: string, status: TaskStatus) =>
 		req<void>(`/api/coach/task/${taskId}/status`, {
 			method: "PATCH",

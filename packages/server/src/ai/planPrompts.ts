@@ -1,4 +1,4 @@
-import type { DiagnosisResult, LearningSnapshot } from '@exam/shared';
+import type { DiagnosisResult, LearningSnapshot } from "@exam/shared";
 
 // 学习计划生成 prompt（Slice 6，DEC-31）：基于学情 + 诊断产出分阶段计划 JSON。
 
@@ -22,44 +22,50 @@ export const PLAN_SYSTEM_PROMPT = `你是一位学习规划师。基于学生的
 - 阶段描述说明训练目标和预期效果。`;
 
 export function buildPlanPrompt(
-  snapshot: LearningSnapshot,
-  diagnosis: DiagnosisResult[],
-  banks: { id: string; name: string }[],
+	snapshot: LearningSnapshot,
+	diagnosis: DiagnosisResult[],
+	banks: { id: string; name: string }[],
 ): string {
-  const pct = (snapshot.accuracy * 100).toFixed(1);
+	const pct = (snapshot.accuracy * 100).toFixed(1);
 
-  // 注入真实题库清单：AI 的 scope.bankId 必须用这些 id（远程实测 AI 会编造 bankId）
-  const bankLines =
-    banks.length > 0
-      ? banks.map((b) => `  - ${b.id}（${b.name}）`).join('\n')
-      : '  （无可用题库）';
+	// 注入真实题库清单：AI 的 scope.bankId 必须用这些 id（远程实测 AI 会编造 bankId）
+	const bankLines =
+		banks.length > 0
+			? banks.map((b) => `  - ${b.id}（${b.name}）`).join("\n")
+			: "  （无可用题库）";
 
-  const weakLines = snapshot.weakTags
-    .slice(0, 8)
-    .map(
-      (t) =>
-        `  - ${t.tag}：错 ${t.wrong} / 共 ${t.total} 题（错误率 ${Math.round((t.wrong / t.total) * 100)}%）`,
-    )
-    .join('\n');
+	const weakLines = snapshot.weakTags
+		.slice(0, 8)
+		.map(
+			(t) =>
+				`  - ${t.tag}：错 ${t.wrong} / 共 ${t.total} 题（错误率 ${Math.round((t.wrong / t.total) * 100)}%）`,
+		)
+		.join("\n");
 
-  const diagnosisLines =
-    diagnosis.length > 0
-      ? diagnosis
-          .slice(0, 15)
-          .map((d) => `  - [${d.errorCategory}] ${d.stem} → ${d.distractorNote ?? ''}`)
-          .join('\n')
-      : '  （暂无诊断数据）';
+	const diagnosisLines =
+		diagnosis.length > 0
+			? diagnosis
+					.slice(0, 15)
+					.map(
+						(d) =>
+							`  - [${d.errorCategory}] ${d.stem} → ${d.distractorNote ?? ""}`,
+					)
+					.join("\n")
+			: "  （暂无诊断数据）";
 
-  const categoryCounts = new Map<string, number>();
-  for (const d of diagnosis) {
-    categoryCounts.set(d.errorCategory, (categoryCounts.get(d.errorCategory) ?? 0) + 1);
-  }
-  const categoryLines = [...categoryCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([cat, cnt]) => `  - ${cat}: ${cnt} 题`)
-    .join('\n');
+	const categoryCounts = new Map<string, number>();
+	for (const d of diagnosis) {
+		categoryCounts.set(
+			d.errorCategory,
+			(categoryCounts.get(d.errorCategory) ?? 0) + 1,
+		);
+	}
+	const categoryLines = [...categoryCounts.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.map(([cat, cnt]) => `  - ${cat}: ${cnt} 题`)
+		.join("\n");
 
-  return `${PLAN_SYSTEM_PROMPT}
+	return `${PLAN_SYSTEM_PROMPT}
 
 ---
 
@@ -71,10 +77,10 @@ export function buildPlanPrompt(
 ${bankLines}
 
 【薄弱知识点】
-${weakLines || '  （暂无）'}
+${weakLines || "  （暂无）"}
 
 【错误分类分布】
-${categoryLines || '  （暂无诊断数据）'}
+${categoryLines || "  （暂无诊断数据）"}
 
 【错题诊断详情】
 ${diagnosisLines}

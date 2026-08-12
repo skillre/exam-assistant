@@ -1,4 +1,4 @@
-import type { DiagnosisContext } from '../insights/diagnosisCollector.js';
+import type { DiagnosisContext } from "../insights/diagnosisCollector.js";
 
 // 错误诊断 prompt（Slice 5，DEC-33）：把错题详情喂给模型，产出结构化错误分类（固定枚举）。
 
@@ -19,40 +19,40 @@ export const DIAGNOSIS_SYSTEM_PROMPT = `你是一位学习诊断专家。分析�
 
 /** 构建诊断输入文本 */
 export function buildDiagnosisPrompt(ctx: DiagnosisContext): string {
-  const attemptLines = ctx.wrongAttempts.map((a) => {
-    const optionsText = a.options
-      .map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`)
-      .join(' | ');
-    const correctText = formatAnswer(a.correctAnswer, a.options);
-    const userText = formatAnswer(a.userAnswer, a.options);
-    return [
-      `【题ID】${a.questionId}`,
-      `【题干】${a.stem}`,
-      `【选项】${optionsText}`,
-      `【正确答案】${correctText}`,
-      `【学生作答】${userText}`,
-      `【标签】${a.tags.length > 0 ? a.tags.join(', ') : '无'}`,
-    ].join('\n');
-  });
+	const attemptLines = ctx.wrongAttempts.map((a) => {
+		const optionsText = a.options
+			.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`)
+			.join(" | ");
+		const correctText = formatAnswer(a.correctAnswer, a.options);
+		const userText = formatAnswer(a.userAnswer, a.options);
+		return [
+			`【题ID】${a.questionId}`,
+			`【题干】${a.stem}`,
+			`【选项】${optionsText}`,
+			`【正确答案】${correctText}`,
+			`【学生作答】${userText}`,
+			`【标签】${a.tags.length > 0 ? a.tags.join(", ") : "无"}`,
+		].join("\n");
+	});
 
-  const distractorLines = ctx.distractorStats.slice(0, 10).map(
-    (d) => `  - ${d.stem}… → 错选"${d.option}"（${d.selectedCount}次）`,
-  );
+	const distractorLines = ctx.distractorStats
+		.slice(0, 10)
+		.map((d) => `  - ${d.stem}… → 错选"${d.option}"（${d.selectedCount}次）`);
 
-  const highlightLines =
-    ctx.tutorHighlights.length > 0
-      ? ctx.tutorHighlights.map((h) => `  - ${h}`).join('\n')
-      : '  （暂无答疑记录）';
+	const highlightLines =
+		ctx.tutorHighlights.length > 0
+			? ctx.tutorHighlights.map((h) => `  - ${h}`).join("\n")
+			: "  （暂无答疑记录）";
 
-  return `${DIAGNOSIS_SYSTEM_PROMPT}
+	return `${DIAGNOSIS_SYSTEM_PROMPT}
 
 ---
 
 【错题记录】（共 ${ctx.wrongAttempts.length} 道）
-${attemptLines.join('\n\n')}
+${attemptLines.join("\n\n")}
 
 【干扰项统计】
-${distractorLines.length > 0 ? distractorLines.join('\n') : '  （暂无统计数据）'}
+${distractorLines.length > 0 ? distractorLines.join("\n") : "  （暂无统计数据）"}
 
 【学生答疑关注点】
 ${highlightLines}
@@ -61,15 +61,18 @@ ${highlightLines}
 }
 
 function formatAnswer(value: unknown, options: string[]): string {
-  if (typeof value === 'boolean') return value ? '正确' : '错误';
-  if (typeof value === 'number') {
-    const letter = String.fromCharCode(65 + value);
-    return `${letter}. ${options[value] ?? '(越界)'}`;
-  }
-  if (Array.isArray(value)) {
-    return value
-      .map((i) => `${String.fromCharCode(65 + (i as number))}. ${options[i as number] ?? '(越界)'}`)
-      .join('+');
-  }
-  return String(value);
+	if (typeof value === "boolean") return value ? "正确" : "错误";
+	if (typeof value === "number") {
+		const letter = String.fromCharCode(65 + value);
+		return `${letter}. ${options[value] ?? "(越界)"}`;
+	}
+	if (Array.isArray(value)) {
+		return value
+			.map(
+				(i) =>
+					`${String.fromCharCode(65 + (i as number))}. ${options[i as number] ?? "(越界)"}`,
+			)
+			.join("+");
+	}
+	return String(value);
 }
