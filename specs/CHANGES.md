@@ -31,7 +31,10 @@
   - `LearningDataCollector.test.ts` 4 用例全绿（collector 依赖 readSessionHistory，默认参数必须保持其现有输出）
   - 远程回归（具体步骤）：① 练习：新建练习→答 1 题→刷新页面→自动恢复到该题（续做不丢进度）；② 错题本：答错 1 题→错题本出现该题→标记已掌握→消失；③ 导入：粘贴文本 AI 解析→预览→入库→题库题数 +1；④ 判分：单选/多选/判断各答 1 题，判定与预设答案一致；⑤ SSE：讲解中断（kill 浏览器网络或服务端重启）后按钮恢复可点、不卡"思考中…"
 - **范围红线**：安全项（无鉴权/SSRF/依赖漏洞）不碰；备份方案不做；部署架构/DB schema 不变；不引入新依赖（超时用原生 AbortSignal.timeout）。
-- **状态**：待确认（评审 blocker 已全部修订）
+- **状态**：已完成（2026-08-10）
+  - 本地：typecheck 0 错误、36 测试全过（含新增 sessionHistory 4 用例）、smoke-e2e 43 断言全过、graded/active 接口 curl 实测通过
+  - 远程（106.37.96.58:6422）：双容器重建 healthy、models/active 读回真实配置、history 过滤生效、SSE 错误链路正常
+  - 遗留：SSE 正常流式 UI 实测待远程 provider Key 更新后补验（当前 Key 401 失效）
 
 ---
 
