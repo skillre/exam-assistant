@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { QuestionDraft } from '@exam/shared';
 import { api } from '../api/client.js';
+import { useFlashNotice } from '../utils.js';
 import { DraftEditor } from './DraftEditor.js';
 
 // 前端即时校验：与后端 questionSchema 同口径，用于入库前拦截
@@ -43,7 +44,7 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
   const [bankName, setBankName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const { notice, flash } = useFlashNotice();
   const [dragOver, setDragOver] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
 
@@ -59,7 +60,7 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
     if (!text.trim()) return;
     setLoading(true);
     setError('');
-    setNotice('');
+    flash('');
     try {
       const r = await api.parseText(text);
       setDrafts(r.questions);
@@ -74,7 +75,7 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
   async function parseFile(file: File) {
     setLoading(true);
     setError('');
-    setNotice('');
+    flash('');
     setDrafts([]);
     try {
       const r = await api.parseFile(file);
@@ -107,7 +108,7 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
           ? { bankId: targetBankId, questions: drafts }
           : { bankName: bankName.trim() || `导入 ${new Date().toLocaleString()}`, questions: drafts },
       );
-      setNotice(`已导入 ${r.count} 道题${appendMode ? '到本题库' : '到新题库'}`);
+      flash(`已导入 ${r.count} 道题${appendMode ? '到本题库' : '到新题库'}`);
       setDrafts([]);
       setText('');
       setBankName('');

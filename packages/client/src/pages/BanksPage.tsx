@@ -30,7 +30,7 @@ export function BanksPage() {
   const [banks, setBanks] = useState<BankWithCount[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const { notice, flash } = useFlashNotice();
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
   const [newBankName, setNewBankName] = useState('');
   const [showImport, setShowImport] = useState(false);
@@ -42,11 +42,6 @@ export function BanksPage() {
   }, []);
 
   useEffect(() => loadBanks(), [loadBanks]);
-
-  function flash(msg: string) {
-    setNotice(msg);
-    setTimeout(() => setNotice(''), 2500);
-  }
 
   async function createBank() {
     const name = newBankName.trim();
@@ -182,7 +177,7 @@ interface DetailProps {
 function BankDetail({ bankId, bankName, allBanks, tagSuggestions, onBack, onChanged }: DetailProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const { notice, flash } = useFlashNotice();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<QuestionDraft | null>(null);
@@ -200,11 +195,6 @@ function BankDetail({ bankId, bankName, allBanks, tagSuggestions, onBack, onChan
   }, [bankId]);
 
   useEffect(() => load(), [load]);
-
-  function flash(msg: string) {
-    setNotice(msg);
-    setTimeout(() => setNotice(''), 2500);
-  }
 
   const allSelected = questions.length > 0 && selected.size === questions.length;
 

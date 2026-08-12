@@ -189,7 +189,9 @@ export function QuizPage({
 
 	async function removeBank() {
 		if (!bankId) return;
-		if (!confirm("删除该题库？其题目、作答记录和答疑历史都会一并清除。"))
+		const bankName = banks.find((b) => b.id === bankId)?.name ?? "该题库";
+		// 与 BanksPage 删除题库文案统一（auditor 修正：措辞一致含"不可恢复"）
+		if (!confirm(`删除题库「${bankName}」？其题目、作答记录和答疑历史都会一并删除，不可恢复。`))
 			return;
 		try {
 			await api.deleteBank(bankId);

@@ -269,8 +269,8 @@ export interface InsightSnapshot {
 }
 
 // ── v3：学习计划 / 任务（FR2 — DEC-31，两表） ───────────────
-export type TaskStatus = 'pending' | 'in_progress' | 'done';
-export type PlanStatus = 'active' | 'completed' | 'archived';
+export type TaskStatus = "pending" | "in_progress" | "done";
+export type PlanStatus = "active" | "completed" | "archived";
 
 export interface LearningPlan {
 	id: string;
@@ -296,10 +296,10 @@ export interface LearningTask {
 
 // ── v3：深度错因诊断（FR1 — DEC-33，固定枚举，扁平单题） ───
 export type ErrorCategory =
-	| 'concept_confusion'
-	| 'calculation_error'
-	| 'misread'
-	| 'knowledge_gap';
+	| "concept_confusion"
+	| "calculation_error"
+	| "misread"
+	| "knowledge_gap";
 
 export interface DiagnosisResult {
 	questionId: string;
@@ -369,14 +369,18 @@ export interface UpdateTaskRequest {
 
 // ── 第三批 卫生⑧：题型中文映射统一（6 处 UI 共用，评审 C5） ──
 export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
-  single: '单选',
-  multiple: '多选',
-  boolean: '判断',
+	single: "单选",
+	multiple: "多选",
+	boolean: "判断",
 };
 
 // ── 第三批 体验①：hash 路由解析纯函数（可单测，不依赖 window） ──
 // 输入 location.hash（如 "#/wrong" / "#bogus" / ""），返回合法 tab；非法回退默认。
-export function parseTabFromHash(hash: string, validKeys: readonly string[], fallback: string): string {
-  const h = hash.replace(/^#\/?/, '');
-  return validKeys.includes(h) ? h : fallback;
+export function parseTabFromHash(
+	hash: string,
+	validKeys: readonly string[],
+	fallback: string,
+): string {
+	const h = hash.replace(/^#\/?/, "");
+	return validKeys.includes(h) ? h : fallback;
 }
