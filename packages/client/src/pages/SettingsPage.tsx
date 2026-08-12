@@ -88,9 +88,10 @@ export function SettingsPage() {
 	async function selectModel(value: string) {
 		const [providerId, modelId] = value.split("::");
 		if (!providerId || !modelId) return;
-		setActive(value);
+		// 第三批 体验④：先 API 成功再 setActive（失败不假选，下拉保持实际生效项）
 		try {
 			await api.setActiveModel({ providerId, modelId });
+			setActive(value);
 			setNotice("已切换当前模型");
 		} catch (e) {
 			setError((e as Error).message);

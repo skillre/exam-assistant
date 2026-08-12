@@ -8,16 +8,27 @@ interface Props {
 }
 
 // provider 增删改表单。编辑时 Key 留空表示不改（DEC-19：Key 永不回填前端）。
+// 第三批 体验⑤：alert → 内联错误；apiType 枚举 + 编辑模式现值兜底（评审 C6）。
+
+// SDK 支持面内常见 API 类型（自由文本兜底保留，兼容历史数据）
+const API_TYPE_OPTIONS = ['openai-completions', 'anthropic-messages'];
+
 export function ProviderForm({ initial, onSubmit, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '');
   const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? '');
   const [apiType, setApiType] = useState(initial?.api ?? 'openai-completions');
   const [apiKey, setApiKey] = useState('');
+  const [error, setError] = useState('');
   const [models, setModels] = useState<ProviderModel[]>(
     initial?.models ?? [{ id: '', name: '' }],
   );
 
   const editing = !!initial;
+  // 编辑模式兜底：历史自由文本不在枚举内时作为额外 option 显示（不空白）
+  const apiTypeOptions =
+    editing && initial && !API_TYPE_OPTIONS.includes(initial.api)
+      ? [initial.api, ...API_TYPE_OPTIONS]
+      : API_TYPE_OPTIONS;
 
   function setModel(i: number, patch: Partial<ProviderModel>) {
     setModels((ms) => ms.map((m, j) => (j === i ? { ...m, ...patch } : m)));
@@ -34,11 +45,11 @@ export function ProviderForm({ initial, onSubmit, onCancel }: Props) {
       .map((m) => ({ id: m.id.trim(), name: (m.name || m.id).trim() }))
       .filter((m) => m.id);
     if (!name.trim() || !baseUrl.trim() || cleanModels.length === 0) {
-      alert('名称 / baseUrl / 至少一个模型 必填');
+      setError('名称 / baseUrl / 至少一个模型 必填');
       return;
     }
     if (!editing && !apiKey.trim()) {
-      alert('新增 provider 必须填 API Key');
+      setError('新增 provider 必须填 API Key');
       return;
     }
     const body: ProviderUpsert = {
@@ -68,7 +79,13 @@ export function ProviderForm({ initial, onSubmit, onCancel }: Props) {
       </div>
       <div className="field">
         <label>API 类型</label>
-        <input value={apiType} onChange={(e) => setApiType(e.target.value)} />
+        <select value={apiType} onChange={(e) => setApiType(e.target.value)}>
+          {apiTypeOptions.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="field">
         <label>
@@ -104,6 +121,7 @@ export function ProviderForm({ initial, onSubmit, onCancel }: Props) {
         ))}
         <button className="btn ghost" onClick={addModel}>+ 加一个模型</button>
       </div>
+      {error && <div className="error">⚠ {error}</div>}
       <div className="row">
         <button className="btn" onClick={submit}>保存</button>
         <button className="btn ghost" onClick={onCancel}>取消</button>

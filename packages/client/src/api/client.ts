@@ -47,10 +47,13 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
 	};
 	const resp = await fetch(url, { ...init, headers });
 	if (!resp.ok) {
+		// 第三批 体验③：先读 j.message（Fastify 默认错误含可读 message），再读 j.error，
+		// 都不存在时回退状态文案（不再裸显英文状态名）
 		let msg = `请求失败 (${resp.status})`;
 		try {
 			const j = await resp.json();
-			if (j?.error) msg = j.error;
+			if (j?.message) msg = j.message;
+			else if (j?.error) msg = j.error;
 		} catch {
 			/* ignore */
 		}
