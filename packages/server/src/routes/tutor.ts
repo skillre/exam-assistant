@@ -26,10 +26,10 @@ export function registerTutorRoutes(app: FastifyInstance, ai: AiService): void {
       if (!attempt) return reply.code(404).send({ error: '作答记录不存在' });
 
       const sse = openSse(reply);
+      let session: Awaited<ReturnType<typeof ai.openTutorSession>> | undefined;
       try {
         // 建/复用该题答疑会话（一题一会话，复用不重复建）
         const existing = tutorSessionRepo.getByQuestion(questionId);
-        let session;
         let firstPrompt: string;
         if (existing) {
           session = await ai.openTutorSession(existing.jsonlPath);
@@ -43,10 +43,12 @@ export function registerTutorRoutes(app: FastifyInstance, ai: AiService): void {
         }
 
         await ai.streamPrompt(session, firstPrompt, (chunk) => sse.delta(chunk));
-        session.dispose();
         sse.done();
       } catch (err) {
+        session?.dispose();
         sse.error((err as Error).message);
+      } finally {
+        session?.dispose();
       }
     },
   );
@@ -65,13 +67,16 @@ export function registerTutorRoutes(app: FastifyInstance, ai: AiService): void {
       }
 
       const sse = openSse(reply);
+      let session: Awaited<ReturnType<typeof ai.openTutorSession>> | undefined;
       try {
-        const session = await ai.openTutorSession(record.jsonlPath);
+        session = await ai.openTutorSession(record.jsonlPath);
         await ai.streamPrompt(session, message, (chunk) => sse.delta(chunk));
-        session.dispose();
         sse.done();
       } catch (err) {
+        session?.dispose();
         sse.error((err as Error).message);
+      } finally {
+        session?.dispose();
       }
     },
   );
@@ -82,7 +87,7 @@ export function registerTutorRoutes(app: FastifyInstance, ai: AiService): void {
     if (!questionId) return reply.code(400).send({ error: 'questionId 必填' });
     const record = tutorSessionRepo.getByQuestion(questionId);
     if (!record) return { messages: [] };
-    const messages = await readSessionHistory(record.jsonlPath);
+    const messages = readSessionHistory(record.jsonlPath, true);
     return { messages };
   });
 }

@@ -14,10 +14,19 @@ function toAttempt(row: AttemptRow): Attempt {
   return {
     id: row.id,
     questionId: row.question_id,
-    userAnswer: JSON.parse(row.user_answer) as AnswerValue,
+    userAnswer: parseJsonSafe(row.user_answer, 0 as AnswerValue),
     isCorrect: row.is_correct === 1,
     answeredAt: row.answered_at,
   };
+}
+
+/** 容错解析 JSON 列：数据自产自销（写入侧均 JSON.stringify），异常时回退默认值不抛 */
+function parseJsonSafe<T>(raw: string, fallback: T): T {
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 interface WrongQuestionRow {
@@ -124,6 +133,34 @@ export const attemptRepo = {
     }
     return result;
   },
+
+  /**
+   * P0-2：给定题目 id 集合，取每题最新一次作答的完整信息（含 attemptId），
+   * 供练习会话续做恢复判分态（gradedById 填充）。
+   */
+  latestAttempts(
+    questionIds: string[],
+  ): Map<string, { attemptId: string; isCorrect: boolean; answeredAt: number }> {
+    const result = new Map<string, { attemptId: string; isCorrect: boolean; answeredAt: number }>();
+    if (questionIds.length === 0) return result;
+    const stmt = db.prepare(
+      `SELECT id, is_correct, answered_at FROM attempts
+       WHERE question_id = ? ORDER BY answered_at DESC LIMIT 1`,
+    );
+    for (const qid of questionIds) {
+      const row = stmt.get(qid) as
+        | { id: string; is_correct: number; answered_at: number }
+        | undefined;
+      if (row) {
+        result.set(qid, {
+          attemptId: row.id,
+          isCorrect: row.is_correct === 1,
+          answeredAt: row.answered_at,
+        });
+      }
+    }
+    return result;
+  },
 };
 
 function rowToQuestion(row: WrongQuestionRow): Question {
@@ -132,10 +169,10 @@ function rowToQuestion(row: WrongQuestionRow): Question {
     bankId: row.bank_id,
     type: row.type as QuestionType,
     stem: row.stem,
-    options: JSON.parse(row.options) as string[],
-    answer: JSON.parse(row.answer) as AnswerValue,
+    options: parseJsonSafe(row.options, [] as string[]),
+    answer: parseJsonSafe(row.answer, 0 as AnswerValue),
     explanation: row.explanation ?? undefined,
-    tags: row.tags ? (JSON.parse(row.tags) as string[]) : undefined,
+    tags: row.tags ? parseJsonSafe(row.tags, [] as string[]) : undefined,
     source: (row.source as Question['source']) ?? undefined,
     createdAt: row.created_at,
   };

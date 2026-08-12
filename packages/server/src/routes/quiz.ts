@@ -176,6 +176,22 @@ export function registerQuizRoutes(app: FastifyInstance): void {
     return buildScorecard(session.id, session.questionIds);
   });
 
+  // P0-2：已答判分态（续做恢复用）。questionId → 最新一次作答（含 correctAnswer）。
+  app.get<{ Params: { id: string } }>('/api/practice/:id/graded', async (req, reply) => {
+    const session = practiceRepo.get(req.params.id);
+    if (!session) return reply.code(404).send({ error: '练习会话不存在' });
+    const latest = attemptRepo.latestAttempts(session.questionIds);
+    const graded: Record<string, GradeResponse> = {};
+    for (const qid of session.questionIds) {
+      const att = latest.get(qid);
+      if (!att) continue;
+      const q = questionRepo.get(qid);
+      if (!q) continue; // 题目已被删除：跳过，与成绩单口径一致
+      graded[qid] = { attemptId: att.attemptId, isCorrect: att.isCorrect, correctAnswer: q.answer };
+    }
+    return graded;
+  });
+
   // 标记/取消错题"已掌握"（软标记，DEC-28）
   // 删除题库：先删该库答疑 JSONL 文件（避免孤儿），再删库（外键 CASCADE
   // 清 questions/attempts/tutor_sessions 行，DEC-13）。

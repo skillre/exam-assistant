@@ -189,6 +189,9 @@ export interface Scorecard {
   wrongQuestionIds: string[];
 }
 
+/** 练习会话已答判分：questionId → 最新作答（含 correctAnswer，供续做恢复完整判分态，P0-2） */
+export type PracticeGraded = Record<string, GradeResponse>;
+
 // ── v2：错题本增强 ─────────────────────────────────────────
 export interface WrongBookItem {
   question: Question;

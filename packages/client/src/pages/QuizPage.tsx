@@ -76,7 +76,12 @@ export function QuizPage({ initialScope, onNavigateWrong }: Props = {}) {
     await loadSessionQuestions(s);
     setIdx(s.currentIndex);
     setScorecard(null);
-    setGradedById({});
+    // P0-2：恢复已答判分态（题号导航保持对错颜色，讲解/追问可继续）
+    try {
+      setGradedById(await api.getPracticeGraded(id));
+    } catch {
+      setGradedById({});
+    }
     localStorage.setItem(LS_KEY, s.id);
   }
 
@@ -136,6 +141,8 @@ export function QuizPage({ initialScope, onNavigateWrong }: Props = {}) {
     if (!session) return;
     try {
       setScorecard(await api.getScorecard(session.id));
+      // P0-2：练习完结即清理续做标记，避免下次进页续做已完结会话
+      localStorage.removeItem(LS_KEY);
     } catch (e) {
       setError((e as Error).message);
     }

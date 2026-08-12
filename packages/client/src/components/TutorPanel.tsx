@@ -39,30 +39,39 @@ export function TutorPanel({ questionId, attemptId, autoLoadHistory }: Props) {
       .catch(() => {/* 无历史忽略 */});
   }, [questionId, autoLoadHistory]);
 
-  function runStream(url: string, body: unknown, userEcho?: string) {
+  async function runStream(url: string, body: unknown, userEcho?: string) {
     setError('');
     setStreaming(true);
     setLive('');
     liveRef.current = '';
     if (userEcho) setTurns((t) => [...t, { role: 'user', content: userEcho }]);
 
-    streamSse(url, body, {
-      onDelta: (text) => {
-        liveRef.current += text;
-        setLive(liveRef.current);
-      },
-      onDone: () => {
-        setTurns((t) => [...t, { role: 'assistant', content: liveRef.current }]);
-        setLive('');
-        setStreaming(false);
-        setHasSession(true);
-      },
-      onError: (msg) => {
-        setError(msg);
-        setLive('');
-        setStreaming(false);
-      },
-    });
+    try {
+      await streamSse(url, body, {
+        onDelta: (text) => {
+          liveRef.current += text;
+          setLive(liveRef.current);
+        },
+        onDone: () => {
+          setTurns((t) => [...t, { role: 'assistant', content: liveRef.current }]);
+          setLive('');
+          setStreaming(false);
+          setHasSession(true);
+        },
+        onError: (msg) => {
+          setError(msg);
+          setLive('');
+          setStreaming(false);
+        },
+      });
+    } catch (e) {
+      // 双保险：streamSse 内部已吞异常转 onError，这里兜底未预期异常
+      setError((e as Error)?.message ?? '讲解失败');
+    } finally {
+      // 无论成功/失败/超时/断线，UI 永不卡在"思考中…"
+      setStreaming(false);
+      setLive('');
+    }
   }
 
   function explain() {

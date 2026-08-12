@@ -26,8 +26,14 @@ function extractText(content: unknown): string {
 
 /**
  * 读回某答疑会话的多轮对话。文件不存在返回空数组（降级，不抛）。
+ *
+ * @param skipFirstUserTurn 跳过首条 user 轮（首条是系统注入的讲解 prompt，含题目+答案）。
+ *   history 端点传 true；LearningDataCollector 保持默认 false（它自己再做 .slice(1)），零回归。
  */
-export function readSessionHistory(jsonlPath: string): HistoryTurn[] {
+export function readSessionHistory(
+  jsonlPath: string,
+  skipFirstUserTurn = false,
+): HistoryTurn[] {
   if (!existsSync(jsonlPath)) return [];
   let content: string;
   try {
@@ -38,12 +44,17 @@ export function readSessionHistory(jsonlPath: string): HistoryTurn[] {
 
   const entries = parseSessionEntries(content);
   const turns: HistoryTurn[] = [];
+  let userSkipped = false;
   for (const entry of entries) {
     if (entry.type !== 'message') continue;
     const msg = (entry as { message?: { role?: string; content?: unknown } }).message;
     if (!msg || (msg.role !== 'user' && msg.role !== 'assistant')) continue;
     const text = extractText(msg.content).trim();
     if (!text) continue;
+    if (skipFirstUserTurn && msg.role === 'user' && !userSkipped) {
+      userSkipped = true;
+      continue;
+    }
     turns.push({ role: msg.role, content: text });
   }
   return turns;

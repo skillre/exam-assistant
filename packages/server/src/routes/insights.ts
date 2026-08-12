@@ -24,14 +24,18 @@ export function registerInsightsRoutes(app: FastifyInstance, ai: AiService): voi
     }
 
     const sse = openSse(reply);
+    let session: Awaited<ReturnType<typeof ai.createTutorSession>>['session'] | undefined;
     try {
       const created = await ai.createTutorSession({ systemPrompt: INSIGHTS_SYSTEM_PROMPT });
+      session = created.session;
       const prompt = buildInsightsPrompt(snapshot);
-      await ai.streamPrompt(created.session, prompt, (chunk) => sse.delta(chunk));
-      created.session.dispose();
+      await ai.streamPrompt(session, prompt, (chunk) => sse.delta(chunk));
       sse.done();
     } catch (err) {
+      session?.dispose();
       sse.error((err as Error).message);
+    } finally {
+      session?.dispose();
     }
   });
 }

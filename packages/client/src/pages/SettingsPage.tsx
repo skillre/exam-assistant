@@ -29,9 +29,15 @@ export function SettingsPage() {
 
   async function refresh() {
     try {
-      const [ps, ms] = await Promise.all([api.listProviders(), api.listModels()]);
+      const [ps, ms, activeSel] = await Promise.all([
+        api.listProviders(),
+        api.listModels(),
+        // P0-3：读回当前激活模型，刷新页面后下拉仍显示实际生效项
+        api.getActiveModel().catch(() => null),
+      ]);
       setProviders(ps);
       setModels(ms);
+      setActive(activeSel ? `${activeSel.providerId}::${activeSel.modelId}` : '');
     } catch (e) {
       setError((e as Error).message);
     }

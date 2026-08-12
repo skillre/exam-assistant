@@ -33,22 +33,29 @@ export function InsightsPage({ onDrillToQuiz }: Props = {}) {
       .catch((e) => setError((e as Error).message));
   }, [bankId]);
 
-  function analyze() {
+  async function analyze() {
     setReport('');
     setError('');
     setRunning(true);
-    streamSse(
-      '/api/insights/analyze',
-      bankId ? { bankId } : {},
-      {
-        onDelta: (t) => setReport((r) => r + t),
-        onDone: () => setRunning(false),
-        onError: (m) => {
-          setError(m);
-          setRunning(false);
+    try {
+      await streamSse(
+        '/api/insights/analyze',
+        bankId ? { bankId } : {},
+        {
+          onDelta: (t) => setReport((r) => r + t),
+          onDone: () => setRunning(false),
+          onError: (m) => {
+            setError(m);
+            setRunning(false);
+          },
         },
-      },
-    );
+      );
+    } catch (e) {
+      setError((e as Error)?.message ?? '学情分析失败');
+    } finally {
+      // 兜底：无论成功/失败/超时/断线，按钮不永久卡"生成中…"
+      setRunning(false);
+    }
   }
 
   const hasData = snapshot && snapshot.totalAttempts > 0;

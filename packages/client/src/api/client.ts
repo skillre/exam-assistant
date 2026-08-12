@@ -15,6 +15,7 @@ import type {
   ActiveModelSelection,
   PracticeScope,
   PracticeSession,
+  PracticeGraded,
   Scorecard,
   WrongBookItem,
   WrongBookQuery,
@@ -117,6 +118,8 @@ export const api = {
       body: JSON.stringify({ currentIndex }),
     }),
   getScorecard: (id: string) => req<Scorecard>(`/api/practice/${id}/scorecard`),
+  // P0-2：续做恢复已答判分态（questionId → 最新作答含 attemptId）
+  getPracticeGraded: (id: string) => req<PracticeGraded>(`/api/practice/${id}/graded`),
 
   // ── v2：错题本增强 ──
   listWrong: (q: WrongBookQuery = {}) => {
@@ -163,6 +166,8 @@ export const api = {
   testProvider: (id: string) =>
     req<ConnTestResult>(`/api/providers/${id}/test`, { method: 'POST' }),
   listModels: () => req<ModelInfo[]>('/api/models'),
+  // P0-3：读回当前激活模型（设置页刷新后仍能展示）
+  getActiveModel: () => req<ActiveModelSelection | null>('/api/models/active'),
   setActiveModel: (body: ActiveModelSelection) =>
     req<{ ok: true }>('/api/settings/model', { method: 'POST', body: JSON.stringify(body) }),
 };
