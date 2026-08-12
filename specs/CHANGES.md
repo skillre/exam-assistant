@@ -100,9 +100,18 @@
   - auditor 否决项修复：useFlashNotice 三处实际调用（原 hook 死代码）、删除题库 confirm 文案统一（669e4f8）
   - 远程：已部署 healthy；零新增依赖（nanoid 删除）、schema/docker 零改动
 
-### 2026-08-10 第四批：P3 功能增值（级别：L，待第三批完成后单独走三问）
+### 2026-08-12 第四批：P3 功能增值——导出 + 练习历史 + 标签复习（级别：M）
 
-- **状态**：未开始（占位）
+- **现状**：① 无任何导出能力（题库/错题只能留在系统内）；② 练习历史不可查（practice_sessions/attempts 有数据但无界面，做完即忘）；③ 标签复习只能手输标签（QuizPage byTag 用自由 input，易输错、看不到可用标签；后端 byTag scope 与 GET /api/tags 已完整支持）
+- **目标**：① 题库/错题一键导出 CSV（RFC4180 转义，字段与导入模板同构）；② 新增「历史」页签（#/history）：练习会话倒序列表（题库/题数/正确率/完成态）→ 详情（成绩单）→ 一键重练/续做；③ 标签复习改下拉（GET /api/tags/counts 显示题量），选中即开练
+- **改动点**：
+  - server：新路由 `/api/export/:bankId/questions.csv` + `/api/export/wrong.csv`（CSV 手写转义 ~15 行，不引入依赖）；新路由 `GET /api/history/practices`（practice_sessions 倒序 + buildScorecard 聚合正确率 + insight_snapshots 判完成态，复用现有函数）；`GET /api/tags/counts`（allTags + 题量计数）
+  - client：BanksPage「导出 CSV」按钮、WrongBookPage「导出错题 CSV」按钮（Blob 下载）；新页面 HistoryPage（列表+详情+重练/续做）+ App tab 6 个（hash 路由 validKeys 加 history）+ 复用 Scorecard 渲染详情；QuizPage byTag input→select 下拉（标签+N 题）
+- **影响面**：quiz.ts 新增 3 端点（无既有路由改动）；App.tsx tab 定义（navigate/parseTabFromHash 参数化已支持新增 key）；BanksPage/WrongBookPage/QuizPage 各加按钮/换控件（不动既有逻辑）；routeHash.test 需补 history 用例
+- **目标验收**：`pnpm typecheck` 0 错误；`pnpm test` 全量通过（新增 exportCsv 转义单测 + history 列表单测 + routeHash history 用例）；curl 导出 CSV 头/转义正确；smoke 冒烟全绿；远程部署后浏览器抽查导出/历史/标签三入口
+- **回归验收**：`pnpm test` 全量 + smoke 51 断言（旧用例必须全绿）；hash 路由 5 旧 tab + 下钻链（drillToQuiz/drillToWrong/startTaskQuiz）+ 错题本 applyFilter + 学情四面板与第三批行为一致（InsightsPage 零改动）；QuizPage 其余 mode（all/undone/wrong/byType）零改动
+- **范围红线**：主观题批改不做（留待评估）；不新增依赖（CSV 手写）；既有表零改动（practice_sessions/attempts 只读，零迁移）；AI prompt/行为不变；安全项/备份方案不碰；部署架构/nginx/compose 不变；删除题库 confirm 等既有行为不动
+- **状态**：待确认
 
 ### 2026-08-10 第二批：v3 AI 学习教练全量落地 + P1 流程闭环补齐（级别：L）
 
