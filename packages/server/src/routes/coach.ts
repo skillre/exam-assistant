@@ -9,6 +9,7 @@ import { learningDataCollector } from '../insights/LearningDataCollector.js';
 import { buildPlanPrompt, PLAN_SYSTEM_PROMPT } from '../ai/planPrompts.js';
 import { validatePlan } from '../import/planSchema.js';
 import { planRepo } from '../repositories/planRepo.js';
+import { bankRepo } from '../repositories/bankRepo.js';
 import { openSse } from './sseWriter.js';
 
 // Coach 路由（v3 Slice 5 & 6）：AI 学习教练 —— 错因诊断 + 学习计划生成 + 任务管理。
@@ -104,7 +105,9 @@ export function registerCoachRoutes(app: FastifyInstance, ai: AiService): void {
       const diagnosis = diagnosisRepo.getLatest(bankId);
       const diagnosisResults: DiagnosisResult[] = diagnosis?.results ?? [];
 
-      const prompt = buildPlanPrompt(snapshot, diagnosisResults);
+      // 真实题库清单：AI 的 scope.bankId 必须用真实 id（防编造，FK 约束）
+      const banks = bankRepo.list().map((b) => ({ id: b.id, name: b.name }));
+      const prompt = buildPlanPrompt(snapshot, diagnosisResults, banks);
       const raw = await ai.runOnce(PLAN_SYSTEM_PROMPT, prompt);
 
       sse.delta(raw);

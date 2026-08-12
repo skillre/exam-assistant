@@ -24,8 +24,16 @@ export const PLAN_SYSTEM_PROMPT = `你是一位学习规划师。基于学生的
 export function buildPlanPrompt(
   snapshot: LearningSnapshot,
   diagnosis: DiagnosisResult[],
+  banks: { id: string; name: string }[],
 ): string {
   const pct = (snapshot.accuracy * 100).toFixed(1);
+
+  // 注入真实题库清单：AI 的 scope.bankId 必须用这些 id（远程实测 AI 会编造 bankId）
+  const bankLines =
+    banks.length > 0
+      ? banks.map((b) => `  - ${b.id}（${b.name}）`).join('\n')
+      : '  （无可用题库）';
+
   const weakLines = snapshot.weakTags
     .slice(0, 8)
     .map(
@@ -58,6 +66,9 @@ export function buildPlanPrompt(
 【学生学情概览】
 - 累计作答：${snapshot.totalAttempts} 次
 - 整体正确率：${pct}%
+
+【可用题库】（scope.bankId 必须严格使用以下 id 之一，禁止编造）
+${bankLines}
 
 【薄弱知识点】
 ${weakLines || '  （暂无）'}
