@@ -1,4 +1,5 @@
-import type { Scorecard as ScorecardData, QuestionType } from '@exam/shared';
+import { QUESTION_TYPE_LABEL } from '@exam/shared';
+import type { Scorecard as ScorecardData } from '@exam/shared';
 
 interface Props {
   data: ScorecardData;
@@ -6,11 +7,6 @@ interface Props {
   onRestart: () => void;
 }
 
-const TYPE_LABEL: Record<QuestionType, string> = {
-  single: '单选',
-  multiple: '多选',
-  boolean: '判断',
-};
 
 // v2 FR1.5：成绩单。纯 CSS 条形，不引图表库（DEC-26）。
 export function Scorecard({ data, onReviewWrong, onRestart }: Props) {
@@ -36,7 +32,7 @@ export function Scorecard({ data, onReviewWrong, onRestart }: Props) {
           {data.byType.map((t) => (
             <BarRow
               key={t.type}
-              label={TYPE_LABEL[t.type]}
+              label={QUESTION_TYPE_LABEL[t.type]}
               correct={t.correct}
               total={t.total}
             />

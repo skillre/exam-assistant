@@ -366,3 +366,10 @@ export interface CoachGenerateRequest {
 export interface UpdateTaskRequest {
 	status: TaskStatus;
 }
+
+// ── 第三批 卫生⑧：题型中文映射统一（6 处 UI 共用，评审 C5） ──
+export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
+  single: '单选',
+  multiple: '多选',
+  boolean: '判断',
+};

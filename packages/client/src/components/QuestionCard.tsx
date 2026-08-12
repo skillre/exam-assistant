@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { QUESTION_TYPE_LABEL } from '@exam/shared';
 import type { Question, AnswerValue, GradeResponse } from '@exam/shared';
 
 interface Props {
@@ -54,7 +55,7 @@ export function QuestionCard({ question, graded, onSubmit, disabled }: Props) {
     <div className="card">
       <div className="row" style={{ marginBottom: 10 }}>
         <span className="badge">
-          {question.type === 'single' ? '单选' : question.type === 'multiple' ? '多选' : '判断'}
+          {QUESTION_TYPE_LABEL[question.type]}
         </span>
         {question.tags?.map((t) => (
           <span key={t} className="badge">

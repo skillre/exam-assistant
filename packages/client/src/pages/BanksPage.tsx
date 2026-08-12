@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { BankWithCount, Question, QuestionDraft, QuestionType } from '@exam/shared';
+import { QUESTION_TYPE_LABEL } from '@exam/shared';
+import type { BankWithCount, Question, QuestionDraft } from '@exam/shared';
 import { api } from '../api/client.js';
+import { useFlashNotice } from '../utils.js';
 import { DraftEditor } from '../components/DraftEditor.js';
 import { ImportPanel } from '../components/ImportPanel.js';
 
@@ -23,9 +25,6 @@ function toDraft(q: Question): QuestionDraft {
   };
 }
 
-function typeLabel(t: QuestionType): string {
-  return t === 'single' ? '单选' : t === 'multiple' ? '多选' : '判断';
-}
 
 export function BanksPage() {
   const [banks, setBanks] = useState<BankWithCount[]>([]);
@@ -75,7 +74,7 @@ export function BanksPage() {
 
   async function deleteBank(bank: BankWithCount) {
     if (
-      !window.confirm(
+      !confirm(
         `删除题库「${bank.name}」？其中 ${bank.questionCount} 道题及相关作答/错题/答疑记录都会一并删除，不可恢复。`,
       )
     )
@@ -256,7 +255,7 @@ function BankDetail({ bankId, bankName, allBanks, tagSuggestions, onBack, onChan
   }
 
   async function deleteQuestion(q: Question) {
-    if (!window.confirm('删除这道题？相关作答/错题/答疑记录一并删除，不可恢复。')) return;
+    if (!confirm('删除这道题？相关作答/错题/答疑记录一并删除，不可恢复。')) return;
     try {
       await api.deleteQuestion(q.id);
       setSelected((prev) => {
@@ -462,7 +461,7 @@ function BankDetail({ bankId, bankName, allBanks, tagSuggestions, onBack, onChan
                 onChange={() => toggle(q.id)}
                 style={{ width: 'auto' }}
               />
-              <span className="badge">{typeLabel(q.type)}</span>
+              <span className="badge">{QUESTION_TYPE_LABEL[q.type]}</span>
               <span style={{ flex: 1 }}>{q.stem}</span>
               {(q.tags ?? []).map((t) => (
                 <span key={t} className="badge">

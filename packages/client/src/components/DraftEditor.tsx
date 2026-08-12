@@ -1,3 +1,4 @@
+import { QUESTION_TYPE_LABEL } from '@exam/shared';
 import type { QuestionDraft, QuestionType, AnswerValue } from '@exam/shared';
 
 interface Props {
@@ -56,9 +57,9 @@ export function DraftEditor({ draft, index, errors, onChange, onRemove, tagSugge
           onChange={(e) => changeType(e.target.value as QuestionType)}
           style={{ width: 'auto' }}
         >
-          <option value="single">单选</option>
-          <option value="multiple">多选</option>
-          <option value="boolean">判断</option>
+          <option value="single">{QUESTION_TYPE_LABEL.single}</option>
+          <option value="multiple">{QUESTION_TYPE_LABEL.multiple}</option>
+          <option value="boolean">{QUESTION_TYPE_LABEL.boolean}</option>
         </select>
         <div className="spacer" />
         <button className="btn danger" onClick={onRemove}>

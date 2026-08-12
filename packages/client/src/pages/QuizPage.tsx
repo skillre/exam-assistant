@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { QUESTION_TYPE_LABEL } from '@exam/shared';
 import type {
 	Bank,
 	Question,
@@ -274,9 +275,9 @@ export function QuizPage({
 								onChange={(e) => setQType(e.target.value as QuestionType)}
 							>
 								<option value="">选题型</option>
-								<option value="single">单选</option>
-								<option value="multiple">多选</option>
-								<option value="boolean">判断</option>
+								<option value="single">{QUESTION_TYPE_LABEL.single}</option>
+								<option value="multiple">{QUESTION_TYPE_LABEL.multiple}</option>
+								<option value="boolean">{QUESTION_TYPE_LABEL.boolean}</option>
 							</select>
 						)}
 						{mode === "byTag" && (
