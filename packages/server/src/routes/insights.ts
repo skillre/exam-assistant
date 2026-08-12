@@ -47,13 +47,13 @@ export function registerInsightsRoutes(
 
 			const sse = openSse(reply);
 			let session:
-				| Awaited<ReturnType<typeof ai.createTutorSession>>["session"]
+				| Awaited<ReturnType<typeof ai.createInMemoryTutorSession>>
 				| undefined;
 			try {
-				const created = await ai.createTutorSession({
+				// 第三批 卫生⑨：内存会话（DEC-11），不再落盘孤儿 JSONL
+				session = await ai.createInMemoryTutorSession({
 					systemPrompt: INSIGHTS_SYSTEM_PROMPT,
 				});
-				session = created.session;
 				const prompt = buildInsightsPrompt(snapshot);
 				await ai.streamPrompt(session, prompt, (chunk) => sse.delta(chunk));
 				sse.done();

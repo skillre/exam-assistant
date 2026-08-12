@@ -151,6 +151,23 @@ export class AiService {
     return { session, jsonlPath };
   }
 
+  /**
+   * 内存一次性会话（第三批 卫生⑨，DEC-11 口径）：不落 JSONL 文件、不检查 sessionFile，
+   * 用于无状态一次性任务（学情分析），跑完 dispose 即弃，不再产生孤儿文件。
+   */
+  async createInMemoryTutorSession(opts: { systemPrompt: string }): Promise<AgentSession> {
+    const model = this.requireModel();
+    const { session } = await createAgentSession({
+      cwd: this.cwd,
+      modelRuntime: this.runtime,
+      model,
+      noTools: 'all',
+      sessionManager: SessionManager.inMemory(this.cwd),
+    });
+    void opts;
+    return session;
+  }
+
   /** 按已存 JSONL 路径恢复答疑会话（服务重启后追问用，DEC-7） */
   async openTutorSession(jsonlPath: string): Promise<AgentSession> {
     const model = this.requireModel();

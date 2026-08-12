@@ -10,6 +10,41 @@ import { readSessionHistory } from "../ai/sessionHistory.js";
 // Phase 5：AI 讲解（SSE 流式）。判分后对某题生成"为什么对/错"讲解，
 //   首条 prompt 注入题目+作答+判分上下文（OQ3），建/复用该题答疑会话（DEC-7）。
 // Phase 6：错题多轮答疑（ask）+ 历史回读（history）。同一 AgentSession 历史自动累积。
+// 第三批 卫生⑩：会话创建 in-flight 锁——并发 explain 同题时只建一次会话（评审 C1，不动 schema）。
+
+// 每题的会话创建锁：并发请求等待第一个完成创建，之后统一 getByQuestion → openTutorSession。
+// 各请求持有独立 session 对象（不共享 AgentSession），避免并发 streamPrompt 冲突。
+const sessionCreationLocks = new Map<string, Promise<void>>();
+
+async function ensureTutorSession(
+	ai: AiService,
+	questionId: string,
+): Promise<{ session: Awaited<ReturnType<typeof ai.openTutorSession>> }> {
+	const existing = tutorSessionRepo.getByQuestion(questionId);
+	if (existing) return { session: await ai.openTutorSession(existing.jsonlPath) };
+
+	let lock = sessionCreationLocks.get(questionId);
+	if (!lock) {
+		lock = (async () => {
+			const created = await ai.createTutorSession({
+				systemPrompt: TUTOR_SYSTEM_PROMPT,
+			});
+			// 双检查：等待期间其他请求可能已登记（防并发双建，评审 R5）
+			if (!tutorSessionRepo.getByQuestion(questionId)) {
+				tutorSessionRepo.create(questionId, created.jsonlPath);
+			}
+			// 统一由调用方 openTutorSession 打开，避免同一 JSONL 被两个 session 对象持有
+			created.session.dispose();
+		})().finally(() => {
+			sessionCreationLocks.delete(questionId);
+		});
+		sessionCreationLocks.set(questionId, lock);
+	}
+	await lock;
+	const record = tutorSessionRepo.getByQuestion(questionId);
+	if (!record) throw new Error('会话创建失败（未登记）');
+	return { session: await ai.openTutorSession(record.jsonlPath) };
+}
 
 export function registerTutorRoutes(app: FastifyInstance, ai: AiService): void {
 	// ── Phase 5：讲解 ────────────────────────────────────────
@@ -28,25 +63,13 @@ export function registerTutorRoutes(app: FastifyInstance, ai: AiService): void {
 			const sse = openSse(reply);
 			let session: Awaited<ReturnType<typeof ai.openTutorSession>> | undefined;
 			try {
-				// 建/复用该题答疑会话（一题一会话，复用不重复建）
-				const existing = tutorSessionRepo.getByQuestion(questionId);
-				let firstPrompt: string;
-				if (existing) {
-					session = await ai.openTutorSession(existing.jsonlPath);
-					// 已有会话：作为新一轮讲解请求（历史里已有题目上下文）
-					firstPrompt = "请再次讲解这道题，说明为什么正确答案成立。";
-				} else {
-					const created = await ai.createTutorSession({
-						systemPrompt: TUTOR_SYSTEM_PROMPT,
-					});
-					session = created.session;
-					tutorSessionRepo.create(questionId, created.jsonlPath);
-					firstPrompt = buildExplainPrompt(
-						question,
-						attempt.userAnswer,
-						attempt.isCorrect,
-					);
-				}
+				// 建/复用该题答疑会话（一题一会话，in-flight 锁防并发双建）
+				const hadSession = !!tutorSessionRepo.getByQuestion(questionId);
+				const { session: s } = await ensureTutorSession(ai, questionId);
+				session = s;
+				const firstPrompt = hadSession
+					? "请再次讲解这道题，说明为什么正确答案成立。"
+					: buildExplainPrompt(question, attempt.userAnswer, attempt.isCorrect);
 
 				await ai.streamPrompt(session, firstPrompt, (chunk) =>
 					sse.delta(chunk),
