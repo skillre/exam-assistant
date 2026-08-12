@@ -33,6 +33,11 @@ export interface ProviderWithKey extends Provider {
   apiKey: string;
 }
 
+/** 模块级私有行读取（create/update 内部用；外部一律 list/listWithKeys） */
+function getRow(id: string): ProviderRow | undefined {
+  return db.prepare('SELECT * FROM providers WHERE id = ?').get(id) as ProviderRow | undefined;
+}
+
 export const providerRepo = {
   list(): Provider[] {
     const rows = db.prepare('SELECT * FROM providers ORDER BY created_at').all() as ProviderRow[];
@@ -46,11 +51,6 @@ export const providerRepo = {
       ...toPublicProvider(row),
       apiKey: row.api_key_enc ? decryptSecret(row.api_key_enc) : '',
     }));
-  },
-
-  get(id: string): Provider | undefined {
-    const row = db.prepare('SELECT * FROM providers WHERE id = ?').get(id) as ProviderRow | undefined;
-    return row ? toPublicProvider(row) : undefined;
   },
 
   create(input: ProviderUpsert): Provider {
@@ -71,7 +71,7 @@ export const providerRepo = {
       api_key_enc: encryptSecret(input.apiKey),
       created_at: now,
     });
-    return this.get(id)!;
+    return toPublicProvider(getRow(id)!);
   },
 
   /** 更新：apiKey 省略则保持原 Key（DEC-19 前端编辑不回填 Key） */
@@ -90,7 +90,8 @@ export const providerRepo = {
       models: JSON.stringify(input.models ?? []),
       api_key_enc,
     });
-    return this.get(id);
+    const row = getRow(id);
+    return row ? toPublicProvider(row) : undefined;
   },
 
   remove(id: string): boolean {

@@ -76,22 +76,6 @@ export const attemptRepo = {
 	},
 
 	/**
-	 * 错题本：曾经做错过的题（去重到题粒度）。
-	 * 只要该题存在 is_correct=0 的记录即算错题，即便后来做对也保留（供复习）。
-	 */
-	listWrongQuestions(): Question[] {
-		const rows = db
-			.prepare(
-				`SELECT DISTINCT q.* FROM questions q
-         JOIN attempts a ON a.question_id = q.id
-         WHERE a.is_correct = 0
-         ORDER BY q.created_at`,
-			)
-			.all() as WrongQuestionRow[];
-		return rows.map(rowToQuestion);
-	},
-
-	/**
 	 * v2：错题明细聚合 —— 每题错误次数 + 最近错误时间（题粒度去重）。
 	 * 返回 question 全字段 + wrongCount + lastWrongAt，供错题本增强。
 	 */

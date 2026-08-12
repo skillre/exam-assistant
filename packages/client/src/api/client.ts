@@ -26,7 +26,6 @@ import type {
 	LearningPlan,
 	LearningTask,
 	TaskStatus,
-	ValidateDraftsResponse,
 	ConnTestResult,
 	BankWithCount,
 	QuestionUpsert,
@@ -179,13 +178,6 @@ export const api = {
 		req<TrendHistoryResponse>(
 			`/api/insights/history${bankId ? `?bankId=${encodeURIComponent(bankId)}` : ""}`,
 		),
-
-	// ── v2：导入草稿校验 ──
-	validateDrafts: (questions: QuestionDraft[]) =>
-		req<ValidateDraftsResponse>("/api/import/validate", {
-			method: "POST",
-			body: JSON.stringify({ questions }),
-		}),
 
 	// ── 答疑历史 ──
 	tutorHistory: (questionId: string) =>

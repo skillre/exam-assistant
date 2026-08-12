@@ -222,13 +222,6 @@ export interface DraftValidationIssue {
 	ok: boolean;
 	errors: string[];
 }
-export interface ValidateDraftsRequest {
-	questions: QuestionDraft[];
-}
-export interface ValidateDraftsResponse {
-	results: DraftValidationIssue[];
-}
-
 // ── v2：Provider 连通性测试（DEC-27：Key 绝不回传） ────────
 export interface ConnTestResult {
 	ok: boolean;

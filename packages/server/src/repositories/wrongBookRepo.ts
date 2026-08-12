@@ -27,14 +27,6 @@ export const wrongBookRepo = {
     });
   },
 
-  getState(questionId: string): WrongState | undefined {
-    const row = db
-      .prepare('SELECT * FROM wrong_book_state WHERE question_id = ?')
-      .get(questionId) as WrongStateRow | undefined;
-    if (!row) return undefined;
-    return { mastered: row.is_mastered === 1, masteredAt: row.mastered_at ?? undefined };
-  },
-
   /** 返回 question_id → 是否已掌握 的映射（错题列表批量拼接用） */
   listMasteredIds(): Set<string> {
     const rows = db
