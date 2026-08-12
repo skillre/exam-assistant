@@ -100,18 +100,38 @@
   - auditor 否决项修复：useFlashNotice 三处实际调用（原 hook 死代码）、删除题库 confirm 文案统一（669e4f8）
   - 远程：已部署 healthy；零新增依赖（nanoid 删除）、schema/docker 零改动
 
-### 2026-08-12 第四批：P3 功能增值——导出 + 练习历史 + 标签复习（级别：M）
+### 2026-08-12 第四批：P3 功能增值——导出 + 练习历史 + 标签复习（级别：M）（修订 v2：评审 1 blocker + 7 concern 全部修订）
 
 - **现状**：① 无任何导出能力（题库/错题只能留在系统内）；② 练习历史不可查（practice_sessions/attempts 有数据但无界面，做完即忘）；③ 标签复习只能手输标签（QuizPage byTag 用自由 input，易输错、看不到可用标签；后端 byTag scope 与 GET /api/tags 已完整支持）
-- **目标**：① 题库/错题一键导出 CSV（RFC4180 转义，字段与导入模板同构）；② 新增「历史」页签（#/history）：练习会话倒序列表（题库/题数/正确率/完成态）→ 详情（成绩单）→ 一键重练/续做；③ 标签复习改下拉（GET /api/tags/counts 显示题量），选中即开练
+- **目标**：① 题库/错题一键导出 CSV（RFC4180 转义，列与导入模板同构）；② 新增「历史」页签（#/history）：练习会话倒序列表（题库/题数/正确率/完成态）→ 详情（成绩单）→ 重练/重开/继续；③ 标签复习改下拉（按所选 bank 显示标签题量），选中即开练
 - **改动点**：
-  - server：新路由 `/api/export/:bankId/questions.csv` + `/api/export/wrong.csv`（CSV 手写转义 ~15 行，不引入依赖）；新路由 `GET /api/history/practices`（practice_sessions 倒序 + buildScorecard 聚合正确率 + insight_snapshots 判完成态，复用现有函数）；`GET /api/tags/counts`（allTags + 题量计数）
-  - client：BanksPage「导出 CSV」按钮、WrongBookPage「导出错题 CSV」按钮（Blob 下载）；新页面 HistoryPage（列表+详情+重练/续做）+ App tab 6 个（hash 路由 validKeys 加 history）+ 复用 Scorecard 渲染详情；QuizPage byTag input→select 下拉（标签+N 题）
-- **影响面**：quiz.ts 新增 3 端点（无既有路由改动）；App.tsx tab 定义（navigate/parseTabFromHash 参数化已支持新增 key）；BanksPage/WrongBookPage/QuizPage 各加按钮/换控件（不动既有逻辑）；routeHash.test 需补 history 用例
-- **目标验收**：`pnpm typecheck` 0 错误；`pnpm test` 全量通过（新增 exportCsv 转义单测 + history 列表单测 + routeHash history 用例）；curl 导出 CSV 头/转义正确；smoke 冒烟全绿；远程部署后浏览器抽查导出/历史/标签三入口
-- **回归验收**：`pnpm test` 全量 + smoke 51 断言（旧用例必须全绿）；hash 路由 5 旧 tab + 下钻链（drillToQuiz/drillToWrong/startTaskQuiz）+ 错题本 applyFilter + 学情四面板与第三批行为一致（InsightsPage 零改动）；QuizPage 其余 mode（all/undone/wrong/byType）零改动
-- **范围红线**：主观题批改不做（留待评估）；不新增依赖（CSV 手写）；既有表零改动（practice_sessions/attempts 只读，零迁移）；AI prompt/行为不变；安全项/备份方案不碰；部署架构/nginx/compose 不变；删除题库 confirm 等既有行为不动
-- **状态**：待确认
+  - server（4 个新端点，无既有路由改动）：
+    - `GET /api/export/:bankId/questions.csv`（quiz.ts）：该题库全部题目，列 = 导入模板 6 列同构（type,stem,options,tags,answer,explanation），RFC4180 转义（含逗号/引号/换行的字段加引号、引号翻倍），UTF-8 BOM 头（Excel 中文兼容）
+    - `GET /api/export/wrong.csv`（quiz.ts）：全库错题（各题最新一次作答 is_correct=0），列 = questions.csv 6 列 + wrong_answer 追加列（用户错误作答 JSON）
+    - `GET /api/history/practices`（quiz.ts，limit 30）：practice_sessions 倒序，每项 { id, bankId, bankName, questionCount, scope, createdAt, completed(insight_snapshots.session_id 存在), correct/total/accuracy(buildScorecard 聚合) }
+    - `GET /api/tags/counts?bankId=`（banks.ts，GET /api/tags 旁）：该 bank 内 {tag,count}[]（按 questionRepo.listByBank 统计），count=0 不返回（零题量标签不展示）
+    - 配套：`buildScorecard` 由 quiz.ts 模块私有改导出（纯函数，逻辑零改动，仅加 export 关键字）
+  - client：
+    - BanksPage 题库行「导出 CSV」按钮 + WrongBookPage「导出错题 CSV」按钮（Blob 下载，native URL.createObjectURL，文件名 exam-{bank}-YYYYMMDD.csv / exam-wrong-YYYYMMDD.csv）
+    - 新页面 HistoryPage（列表：题库/题数/正确率/完成态徽标；详情：复用 GET /api/practice/:id/scorecard 渲染成绩单；按钮三态：完成→「重练」、未完成静态范围→「重开」、未完成→「继续」）
+    - App.tsx tab 加 history（第 6 个 tab，navigate 收口处追加分支；routeHash.test 补 history 合法用例）
+    - QuizPage byTag 的 input 改 select 下拉（数据源 GET /api/tags/counts?bankId=当前选中 bank，显示「标签（N 题）」；未选 bank 时提示先选择题库；选后 scope.tag 链路零改动）
+- **影响面**：
+  - quiz.ts 新增 3 端点 + buildScorecard 导出（无行为变化）；banks.ts 新增 1 端点；App.tsx tab 定义 + navigate 分支；BanksPage/WrongBookPage/QuizPage 各加按钮/换控件（不动既有逻辑）；routeHash.test 补用例
+  - 已声明事实：删除题库会 CASCADE 连带清除该库练习历史/快照（现有行为，非本批引入，删除 confirm 文案已含"相关作答/错题/答疑记录一并删除"）
+  - 重练语义：静态范围（all/byType/byTag）重开=同范围新会话；动态范围（undone/wrong）重开=按当前作答状态重算题集（题集可能缩水，属预期，文案标「重开」）
+  - 续做：HistoryPage「继续」写入现有 localStorage 续做键 + navigate("quiz")，复用 QuizPage 既有恢复逻辑（与现有续做唯一入口一致，无冲突）
+- **目标验收**：
+  - `pnpm typecheck` 0 错误；`pnpm test` 全量通过（新增 exportCsv 转义单测：逗号/引号/换行/BOM；history 聚合单测；routeHash history 用例；旧 79 用例必须全绿）
+  - curl 本地验证：`/api/export/:bankId/questions.csv` 表头 6 列 + 转义正确；`/api/export/wrong.csv` 7 列含 wrong_answer；`/api/tags/counts?bankId=` 只含该库标签且计数正确；`/api/history/practices` 含 completed/correct/total
+  - smoke 冒烟全绿（51 断言不降）
+  - 远程部署后抽查（证据落盘 specs/verification/）：导出的 CSV 用 Excel 打开中文不乱码、WrongBookPage 导出按钮存在且文件可下载、历史页出现最近会话且完成态正确、标签下拉显示「标签（N 题）」且 N 与题面一致
+- **回归验收**：
+  - `pnpm test` 全量（旧 79 用例全绿）+ smoke 51 断言
+  - hash 路由 5 旧 tab + 非法回退 + 下钻链（drillToQuiz/drillToWrong/startTaskQuiz）+ 错题本 applyFilter + 学情四面板与第三批一致（InsightsPage 零改动）
+  - QuizPage 其余 mode（all/undone/wrong/byType）与练习闭环（start→答题→判分→finish 快照）行为不变；BanksPage 创建/删除/导入题库流程不变
+- **范围红线**：主观题批改不做（留待评估）；不新增依赖（CSV 手写转义）；既有表零改动（practice_sessions/attempts/schema 零迁移，tags/counts 为读聚合）；AI prompt/行为不变；安全项/备份方案不碰；部署架构/nginx/compose 不变
+- **状态**：待确认（v2）
 
 ### 2026-08-10 第二批：v3 AI 学习教练全量落地 + P1 流程闭环补齐（级别：L）
 
