@@ -197,4 +197,8 @@
   - InsightsPage/HistoryPage/错题本/掌握度 代码零改动（仅数据流经 essay 的 is_correct）
   - 粘贴导入（parseWithAi）旧行为不变：三题型解析结果与现状一致（prompt 仅追加 essay 说明行）
 - **范围红线**：**schema 仅允许 questions.type CHECK 扩增 'essay'（单行 DDL；其余表/列/索引/既有数据零迁移零改动）**；零新依赖（AI 评分复用现有 AiService/runOnce，无队列库）；不做「待批改」异步队列态；不做 0-100 分数；安全项/备份方案/部署架构/nginx/compose 不碰；客观题三题型任何行为不变；v3 教练 prompt（diagnosis/plan/tutor）零改动（仅新增 essay 评分 prompt + parseWithAi 导入 prompt 追加 essay 说明）。
-- **状态**：已确认（2026-08-12，用户确认 v2；评审 2 blocker 清零 + 6 concern 全部采纳）
+- **状态**：已完成（2026-08-12）
+  - 本地：typecheck 0、100 测试全过（旧 93 + parseFile essay 4 + routes.smoke essay 链路 1 + migrate 2）、smoke 51 断言
+  - 过程中修复既有 bug：attemptRepo.latestWithAnswers 同毫秒排序不稳（加 rowid DESC，第四批同款问题）
+  - 迁移机制：better-sqlite3 默认 DEFENSIVE 禁改 sqlite_master → unsafeMode 独立连接 + writable_schema 改写（幂等/备份/回滚），远程存量库验证生效
+  - 远程：已部署 healthy；essay 真实 AI 评分对/错 + feedback 均正确；wrong.csv/questions.csv essay 行转义正确

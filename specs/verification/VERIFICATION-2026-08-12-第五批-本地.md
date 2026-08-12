@@ -9,7 +9,7 @@
 ## 新增测试用例（契约②）
 
 | 用例 | 断言 |
-|---|---|
+| --- | --- |
 | questionSchema essay 合法 | type=essay + string answer 通过 |
 | questionSchema essay 空参考答案 | 空串/纯空白拒绝 |
 | parseFile JSON essay | answer=参考文本 |
@@ -38,3 +38,14 @@ GET  /api/export/:bankId/questions.csv → essay,简述 TCP 三次握手,[],"""S
 - **迁移机制**：better-sqlite3 默认开 `SQLITE_DBCONFIG_DEFENSIVE` 禁止改 sqlite_master → migrate 用 `{ unsafeMode(true) }` 独立连接执行 `PRAGMA writable_schema=ON` 改写 questions 建表语句（幂等 + 备份 + 校验回滚 + schema_version 递增），主连接保持安全模式
 - **essay answer 存储**：库层统一 JSON.stringify（与 number/boolean 同构），读取统一 JSON.parse 还原；CSV 往返靠 flatRowToRaw 剥 JSON 引号
 - **评分输出**：zod（essayGradingSchema）校验 {isCorrect, feedback}，非法/超时/失败一律 502 不落库
+
+## 远程部署抽查（106.37.96.58:8080，2026-08-12）
+
+- docker compose 重建：api/web 双容器 Healthy
+- **迁移生效**：容器内查 sqlite_master，questions 表 CHECK 已含 'essay'（writable_schema 迁移在存量库成功，数据零丢失）
+- **真实 AI 评分**（远程已配置 provider key）：
+  - 正确答案「客户端发 SYN，服务端回 SYN-ACK，客户端再发 ACK」→ `{"isCorrect":true,"feedback":"回答正确，准确描述了TCP三次握手中SYN、SYN-ACK、ACK三个报文段的发送顺序，要点完整。"}`
+  - 错误答案「TCP 不需要握手」→ `{"isCorrect":false,"feedback":"回答错误。TCP 建立连接确实需要三次握手，正确过程为：..."}`
+- wrong.csv essay 行（7 列）：`essay,简述 TCP 三次握手的过程,[],"""客户端发送 SYN...""",评分要点：...,网络,"""TCP 不需要握手"""`（answer/wrong_answer 转义正确）
+- questions.csv essay 行：同上 6 列 + options 空
+- 客观题回归：single 题同步判分 `{"isCorrect":true}` 不变
