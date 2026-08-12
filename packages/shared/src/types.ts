@@ -81,6 +81,8 @@ export interface GradeResponse {
 	attemptId: string;
 	isCorrect: boolean;
 	correctAnswer: AnswerValue;
+	// v3：判分后是否刚触发掌握达标（可选——P0-2 graded 端点不构造此字段）
+	mastered?: boolean;
 }
 
 // ── 导入 API 契约 ───────────────────────────────────────────
@@ -239,3 +241,135 @@ export type SseEvent =
 	| { type: "delta"; text: string }
 	| { type: "done" }
 	| { type: "error"; message: string };
+
+// ── v3：掌握判定（DEC-32 — consecutive streak） ─────────────
+export interface MasteryState {
+	questionId: string;
+	consecutiveCorrect: number;
+	mastered: boolean;
+	updatedAt?: number;
+}
+
+// ── v3：学情快照（FR4 — 时间序列，DEC-30 落库） ─────────────
+export interface TagStat {
+	tag: string;
+	total: number;
+	correct: number;
+}
+
+export interface TypeStat {
+	type: QuestionType;
+	total: number;
+	correct: number;
+}
+
+export interface InsightSnapshot {
+	id: string;
+	sessionId: string;
+	bankId: string;
+	total: number;
+	correct: number;
+	accuracy: number;
+	byTag: TagStat[];
+	byType: TypeStat[];
+	createdAt: number;
+}
+
+// ── v3：学习计划 / 任务（FR2 — DEC-31，两表） ───────────────
+export type TaskStatus = 'pending' | 'in_progress' | 'done';
+export type PlanStatus = 'active' | 'completed' | 'archived';
+
+export interface LearningPlan {
+	id: string;
+	bankId: string;
+	title: string;
+	description?: string;
+	phases: AiPhase[];
+	status: PlanStatus;
+	createdAt: number;
+}
+
+export interface LearningTask {
+	id: string;
+	planId: string;
+	title: string;
+	phaseIndex: number;
+	sortOrder: number;
+	scope: PracticeScope;
+	status: TaskStatus;
+	createdAt: number;
+	completedAt?: number;
+}
+
+// ── v3：深度错因诊断（FR1 — DEC-33，固定枚举，扁平单题） ───
+export type ErrorCategory =
+	| 'concept_confusion'
+	| 'calculation_error'
+	| 'misread'
+	| 'knowledge_gap';
+
+export interface DiagnosisResult {
+	questionId: string;
+	stem: string;
+	userAnswer: string; // AI 产出的选项文本（如 "B. xxx"）
+	correctAnswer: string;
+	errorCategory: ErrorCategory;
+	distractorNote?: string;
+}
+
+// ── v3：AI 产出（计划生成，内部用） ─────────────────────────
+export interface AiPhase {
+	title: string;
+	description?: string;
+	tasks: AiTask[];
+}
+
+export interface AiTask {
+	title: string;
+	scope: PracticeScope;
+}
+
+export interface AiPlan {
+	title: string;
+	description?: string;
+	phases: AiPhase[];
+}
+
+// ── v3：趋势（FR4 前端消费，Slice0 对账 T3/T4） ─────────────
+export interface TrendPoint {
+	ts: number;
+	accuracy: number;
+	total: number;
+}
+
+export interface TagTrendPoint {
+	ts: number;
+	tag: string;
+	accuracy: number;
+	total: number;
+}
+
+export interface TrendHistoryResponse {
+	overall: TrendPoint[];
+	byTag: TagTrendPoint[];
+}
+
+// ── v3：API 请求 / 响应 ────────────────────────────────────
+/** 练习完成（Slice0 对账 T1）：快照落库 + 成绩单 */
+export interface FinishPracticeResponse {
+	scorecard: Scorecard;
+	snapshotId: string;
+}
+
+export interface SnapshotHistoryQuery {
+	bankId?: string;
+	limit?: number;
+}
+
+export interface CoachGenerateRequest {
+	bankId?: string;
+}
+
+export interface UpdateTaskRequest {
+	status: TaskStatus;
+}

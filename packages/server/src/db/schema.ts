@@ -71,4 +71,59 @@ CREATE INDEX IF NOT EXISTS idx_questions_bank ON questions(bank_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_question ON attempts(question_id);
 CREATE INDEX IF NOT EXISTS idx_tutor_question ON tutor_sessions(question_id);
 CREATE INDEX IF NOT EXISTS idx_practice_bank ON practice_sessions(bank_id);
+
+-- ── v3：AI 学习教练（DEC-30 快照落库 / DEC-32 掌握 / DEC-33 诊断） ──
+-- 只加不改：既有表零 ALTER、零迁移（第二批红线）。
+
+CREATE TABLE IF NOT EXISTS mastery_states (  -- 掌握判定：增量 streak（D1 Option A，不查历史 attempts）
+  question_id         TEXT PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+  consecutive_correct INTEGER NOT NULL DEFAULT 0,
+  mastered            INTEGER NOT NULL DEFAULT 0,
+  updated_at          INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS insight_snapshots (  -- 学情快照：练习完成时落库（D5），session_id 幂等
+  id          TEXT PRIMARY KEY,
+  session_id  TEXT NOT NULL UNIQUE,
+  bank_id     TEXT NOT NULL REFERENCES banks(id) ON DELETE CASCADE,
+  total       INTEGER NOT NULL,
+  correct     INTEGER NOT NULL,
+  accuracy    REAL NOT NULL,
+  by_tag      TEXT NOT NULL,  -- JSON: [{tag, total, correct}]
+  by_type     TEXT NOT NULL,  -- JSON: [{type, total, correct}]
+  created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS learning_plans (  -- 学习计划（D2 两表：计划 + 任务）
+  id          TEXT PRIMARY KEY,
+  bank_id     TEXT NOT NULL REFERENCES banks(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  description TEXT,
+  phases      TEXT NOT NULL,  -- JSON: AiPhase[]（AI 产出快照，供前端展示阶段）
+  status      TEXT NOT NULL DEFAULT 'active',
+  created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS learning_tasks (  -- 计划任务：一键开练（scope JSON 直接喂 /api/practice/start）
+  id           TEXT PRIMARY KEY,
+  plan_id      TEXT NOT NULL REFERENCES learning_plans(id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  phase_index  INTEGER NOT NULL,
+  sort_order   INTEGER NOT NULL DEFAULT 0,
+  scope        TEXT NOT NULL,  -- JSON: PracticeScope
+  status       TEXT NOT NULL DEFAULT 'pending',
+  created_at   INTEGER NOT NULL,
+  completed_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS diagnosis_results (  -- AI 诊断缓存（FR5.3 缓存可追溯）
+  id         TEXT PRIMARY KEY,
+  bank_id    TEXT,  -- NULL = 全局
+  results    TEXT NOT NULL,  -- JSON: DiagnosisResult[]
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_snapshots_bank ON insight_snapshots(bank_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_plan ON learning_tasks(plan_id);
+CREATE INDEX IF NOT EXISTS idx_plans_bank ON learning_plans(bank_id);
 `;
