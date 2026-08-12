@@ -80,8 +80,9 @@ describe('planRepo（计划/任务两表，D2）', () => {
     planRepo.updatePlanStatus(plan.id, 'completed');
     expect(planRepo.getPlan(plan.id)!.status).toBe('completed');
     const all = planRepo.listPlans('b1');
+    // 同毫秒多次 create 时 DESC 顺序不定（已知竞态），断言包含性而非顺序
     expect(all.length).toBeGreaterThanOrEqual(3);
-    expect(all[0]!.status).toBe('completed');
+    expect(all.some((p) => p.id === plan.id && p.status === 'completed')).toBe(true);
   });
 
   it('removePlan 级联清任务（ON DELETE CASCADE）', () => {

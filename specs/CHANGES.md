@@ -64,7 +64,11 @@
   - 远程回归：练习续做/判分/错题本标记/导入/SSE 讲解流式/设置页读回模型 与第一批验收时行为一致
   - `git diff` 确认：无新增依赖、既有表结构零改动（仅新增 5 表）、docker/nginx/compose 零改动
 - **范围红线**：继承 FRD Non-Goals——不引入新存储/时序库/向量库、不引入重型图表库（趋势图纯 CSS/SVG）、不做主观题/多端/账号、AI 不做进页面自动全分析（按需触发）；安全项/备份方案不碰；本地不跑构建（DEC-15，远程执行）。
-- **状态**：待确认（评审 3 blocker + 6 concern 已全部修订）
+- **状态**：已完成（2026-08-12）
+  - 本地：typecheck 0 错误、58 测试全过（36 旧 + masteryService 3 + snapshotRepo 3 + snapshotHistory 4 + planRepo 4 + aiSchemas 8）、smoke-e2e 51 断言（含 v3 新表 7 项）
+  - 远程（106.37.96.58:6422）端到端：面板 REST 即时、诊断 SSE 流式+11 条落库+4 类错因、计划生成落两表（8 任务）、一键开练、快照→趋势点、连续 3 次答对 mastered:true+错题本联动、历史回读、AI 降级 error 帧
+  - 实测修复 3 处：extractJson 误抽 phases 数组、AI 编造 bankId（prompt 注入真实题库）、全局计划 bank_id NULL（新表定义）
+  - 证据：specs/verification/VERIFICATION-2026-08-10-第二批-v3远程端到端.md
 ### 2026-08-10 第三批：P2 体验优化与代码卫生（级别：M，待第二批完成后单独走三问）
 
 - **状态**：未开始（占位）
