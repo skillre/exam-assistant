@@ -21,7 +21,8 @@ async function ensureTutorSession(
 	questionId: string,
 ): Promise<{ session: Awaited<ReturnType<typeof ai.openTutorSession>> }> {
 	const existing = tutorSessionRepo.getByQuestion(questionId);
-	if (existing) return { session: await ai.openTutorSession(existing.jsonlPath) };
+	if (existing)
+		return { session: await ai.openTutorSession(existing.jsonlPath) };
 
 	let lock = sessionCreationLocks.get(questionId);
 	if (!lock) {
@@ -42,7 +43,7 @@ async function ensureTutorSession(
 	}
 	await lock;
 	const record = tutorSessionRepo.getByQuestion(questionId);
-	if (!record) throw new Error('会话创建失败（未登记）');
+	if (!record) throw new Error("会话创建失败（未登记）");
 	return { session: await ai.openTutorSession(record.jsonlPath) };
 }
 
