@@ -190,7 +190,10 @@ export interface Scorecard {
 }
 
 /** 练习会话已答判分：questionId → 最新作答（含 correctAnswer/answeredAt，供续做恢复完整判分态，P0-2） */
-export type PracticeGraded = Record<string, GradeResponse & { answeredAt: number }>;
+export type PracticeGraded = Record<
+	string,
+	GradeResponse & { answeredAt: number }
+>;
 
 // ── v2：错题本增强 ─────────────────────────────────────────
 export interface WrongBookItem {
