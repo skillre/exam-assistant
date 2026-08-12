@@ -34,7 +34,7 @@
 - **状态**：已完成（2026-08-10）
   - 本地：typecheck 0 错误、36 测试全过（含新增 sessionHistory 4 用例）、smoke-e2e 43 断言全过、graded/active 接口 curl 实测通过
   - 远程（106.37.96.58:6422）：双容器重建 healthy、models/active 读回真实配置、history 过滤生效、SSE 错误链路正常
-  - 遗留：SSE 正常流式 UI 实测待远程 provider Key 更新后补验（当前 Key 401 失效）
+  - 遗留已清：SSE 流式实测通过（541 delta 帧 + done，0 error）；断连验证通过（流中 kill api 容器，客户端 curl 正常退出码 0 无挂死）；容器重启恢复 healthy、数据完好。运维观察：docker kill 后 restart: unless-stopped 未自动拉起（Docker Desktop 特性），需 docker compose up -d 手动恢复
 
 ---
 
