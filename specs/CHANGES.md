@@ -69,9 +69,32 @@
   - 远程（106.37.96.58:6422）端到端：面板 REST 即时、诊断 SSE 流式+11 条落库+4 类错因、计划生成落两表（8 任务）、一键开练、快照→趋势点、连续 3 次答对 mastered:true+错题本联动、历史回读、AI 降级 error 帧
   - 实测修复 3 处：extractJson 误抽 phases 数组、AI 编造 bankId（prompt 注入真实题库）、全局计划 bank_id NULL（新表定义）
   - 证据：specs/verification/VERIFICATION-2026-08-10-第二批-v3远程端到端.md
-### 2026-08-10 第三批：P2 体验优化与代码卫生（级别：M，待第二批完成后单独走三问）
+### 2026-08-10 第三批：P2 体验优化与代码卫生（级别：M，评审前修订版）
 
-- **状态**：未开始（占位）
+- **现状**（审计 + 本次核查）：① Tab 切换无 URL 状态，刷新必回刷题页、无深链；② 题目选项纯 div 无键盘可操作（QuestionCard:107-128）；③ Fastify 默认错误（{statusCode,error,message}）前端只读 j.error 显示英文状态名（client.ts:54）；④ selectModel 先 setActive 后调 API，失败不回滚（SettingsPage:70-75）；⑤ ProviderForm 用 alert 报错 + apiType 自由文本；⑥ 死代码：shared-check.ts、api.validateDrafts、attemptRepo.listWrongQuestions、wrongBookRepo.getState、providerRepo.get；⑦ nanoid 死依赖（package.json:22，src 零 import）；⑧ 题型中文映射重复 4 份 + flash() 3 份拷贝 + 删除题库逻辑 2 份；⑨ insights analyze 每次产生孤儿 JSONL（AiService.createTutorSession 文件持久化，跑完不删）；⑩ tutor 会话并发双建竞态（question_id 无 UNIQUE，tutorSessionRepo:32-35）；⑪ 测试缺口：parseFile 解析 0 测试、路由层 0 测试、provider Key 链路 0 测试。
+- **目标**：体验 5 项（深链/无障碍/错误文案/选择回滚/表单统一）+ 卫生 6 项（死代码/nanoid/重复合并/孤儿 JSONL/竞态/测试补缺）全量落地。
+- **改动点**：
+  - **体验① 轻量 hash 路由（评审 C3/S5 修订）**：App.tsx 用原生 `location.hash`（`#/quiz` 等 5 tab）；**单一 `navigate(tab)` 收口**——三处下钻（drillToQuiz/drillToWrong/startTaskQuiz）、switchTab（含闭环④ filter 重置）、hashchange 监听全部走 navigate，后退/前进不丢 filter 重置；初始化读 hash 决定初始 tab（**非法 hash 回退刷题页**）；**不引入依赖**。
+  - **体验② 无障碍（评审 C2 修订）**：QuestionCard **单选/多选/boolean 三分支**的选项区统一加键盘支持（单选 `role="radio"`+方向键，多选 `role="checkbox"`+Tab+空格，判断同单选；tabIndex 可聚焦），键盘与现有点击走同一判分 setter 并存。验收补多选/判断键盘操作各一次。
+  - **体验③ 错误文案**：client.ts `req()` 失败时先读 `j.message`（Fastify 默认错误），再读 `j.error`，回退英文状态名不再裸显。
+  - **体验④ selectModel 回滚**：SettingsPage.selectModel 先 `await api.setActiveModel` 成功后再 `setActive`（失败仅报错不假选）。
+  - **体验⑤ ProviderForm 统一（评审 C6 修订）**：alert → 内联错误区；apiType 自由文本 → 下拉枚举（openai-completions / anthropic-messages）+ **编辑模式兜底：现值不在枚举内时作为额外 option 显示**（历史自由文本不空白，types.ts:135 api 是 string）。
+  - **卫生⑥ 死代码清扫（评审 C4/S2 修订）**：删除 shared-check.ts、client api.validateDrafts + shared 的 ValidateDraftsRequest/Response 类型、attemptRepo.listWrongQuestions、wrongBookRepo.getState；**providerRepo.get 有内部调用（create:74/update:93）——改为私有 getRow 内联**（非纯删除）；practiceRepo.remove 保留（smoke-e2e 在用）；**顺带删除无消费方的 POST /api/import/validate 端点**（S2，防二次卫生债，server questionSchema.validateDrafts 内部校验不动）。
+  - **卫生⑦ nanoid**：删 package.json 依赖（pnpm-lock 同步）。
+  - **卫生⑧ 重复合并（评审 C5 修订）**：题型中文映射抽到 `@exam/shared`（`QUESTION_TYPE_LABEL` 常量）**覆盖全部 6 处 UI**（Scorecard/QuestionCard/BanksPage/QuizPage/WrongBookPage/DraftEditor，含 3 处 select 复用）；**tutorPrompts/parseWithAi 两处 prompt 文本不动**（AI prompt 红线）；`flash()` 抽公共 util（3 份合一）；删除题库逻辑统一 confirm 风格。
+  - **卫生⑨ 孤儿 JSONL（评审 S1 修订）**：AiService 新增 `createInMemoryTutorSession`（SessionManager.inMemory 变体，**不检查 sessionFile**——区别于 createTutorSession:144-147 的空值检查），insights analyze 改用之（类型标注同步换新方法返回类型），不再落盘孤儿文件。
+  - **卫生⑩ 竞态（评审 C1 修订：不用事务——better-sqlite3 事务是同步块不能 await，且 AI 调用必须在事务外）**：tutor 路由层加 in-flight 去重 `Map<questionId, Promise<Session>>`——同一题并发 explain 时第二个请求复用第一个进行中的会话（AI 调用也只发一次）；请求完成/失败后清理 Map。~10 行，不动 schema/不重建表。
+  - **卫生⑪ 测试（评审 S3/S4 修订）**：新增 `parseFile.test.ts`（JSON/CSV/xlsx 解析正确性 + 畸形输入容错）+ `routes.smoke.test.ts`（**自建 Fastify 实例按 register*Routes 组装 + AiService 桩，不 import index.ts（顶层 listen）**，DATA_DIR 指临时目录，`app.inject` 走 HTTP 层：建库→导入→练习→判分→错题→graded + provider 配 Key→密文入库→列显脱敏，不依赖真实 AI）；server package.json 加 `"smoke": "tsx smoke-e2e.ts"` script。
+- **影响面**：client 全站轻触（App 路由/QuestionCard 键盘/req 错误路径/Settings/ProviderForm/两页去重）；server 局部（AiService 新增方法、insights 会话方式、tutorSessionRepo 事务、删 4 个导出）；shared 加 1 常量。DB schema/部署架构/nginx/compose 零改动。
+- **目标验收**（每条可执行）：
+  - `pnpm typecheck` 0 错误
+  - `pnpm test` 全量通过：现有 58 用例全绿 + 新增 parseFile 用例（JSON/CSV/xlsx 各解析正确 + 畸形输入不抛）+ routes.smoke 用例（HTTP 全链路 + provider 密文）
+  - `smoke-e2e.ts` 51 断言保持全绿
+  - `git diff` 确认：无新增依赖（nanoid 为删除）、无既有表结构改动、docker/compose 零改动
+  - 远程实测（106.37.96.58:6422）：`#/wrong` 直开错题本、刷新停留当前页、非法 hash 回退刷题页；接口 400 错误显示 message 字段而非裸 "Bad Request"（评审 C7：Fastify 默认 message 为英文，验收不承诺中文）；单选/多选/判断选项区均可键盘操作
+- **回归验收**（旧功能未坏）：全量测试 + smoke 51 全绿；远程回归：Tab 切换/刷题判分/错题本筛选（applyFilter）/导入/学情四面板与第二批一致；无 hash 时默认进刷题页（兼容旧入口）。
+- **范围红线**：安全项（无鉴权/SSRF/依赖漏洞）与备份方案不碰；部署架构/nginx/compose 不变；**不重建既有表**（竞态用应用层事务，schema 零改动）；不引入新依赖（hash 路由用原生）；AI prompt/行为不变。
+- **状态**：待确认（评审 0 blocker + 7 concern + 5 suggestion 已全部修订：C1 竞态改 in-flight Map 去重、C3 navigate 单一收口、C4 getRow 内联、C5 覆盖 6 处、C6 枚举兜底、C7 验收措辞、S1-S5 全采纳）
 
 ### 2026-08-10 第四批：P3 功能增值（级别：L，待第三批完成后单独走三问）
 
@@ -100,4 +123,4 @@
   - 远程回归：练习续做/判分/错题本标记/导入/SSE 讲解流式/设置页读回模型 与第一批验收时行为一致
   - `git diff` 确认：无新增依赖、既有表结构零改动（仅新增表）、docker/nginx/compose 零改动
 - **范围红线**：继承 FRD Non-Goals——不引入新存储/时序库/向量库、不引入重型图表库（趋势图纯 CSS/SVG）、不做主观题/多端/账号、AI 不做进页面自动全分析（按需触发）；安全项/备份方案不碰；本地不跑构建（DEC-15，远程执行）。
-- **状态**：待确认
+- **状态**：待确认（评审 0 blocker + 7 concern + 5 suggestion 已全部修订：C1 竞态改 in-flight Map 去重、C3 navigate 单一收口、C4 getRow 内联、C5 覆盖 6 处、C6 枚举兜底、C7 验收措辞、S1-S5 全采纳）
