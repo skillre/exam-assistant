@@ -10,6 +10,7 @@ import { registerQuizRoutes } from './routes/quiz.js';
 import { registerBankRoutes } from './routes/banks.js';
 import { registerTutorRoutes } from './routes/tutor.js';
 import { registerInsightsRoutes } from './routes/insights.js';
+import { registerCoachRoutes } from './routes/coach.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -34,6 +35,7 @@ async function main(): Promise<void> {
   registerBankRoutes(app);
   registerTutorRoutes(app, ai);
   registerInsightsRoutes(app, ai);
+  registerCoachRoutes(app, ai);
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
 }
