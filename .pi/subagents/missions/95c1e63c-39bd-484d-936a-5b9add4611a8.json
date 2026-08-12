@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "95c1e63c-39bd-484d-936a-5b9add4611a8",
+  "title": "独立评审存量修改 Change Gate 文档（评审对象：/Users/skillre/claude/系统开发/考试助手/specs/CHANGES.md 中「第三批：P2 体验优化与代码卫生」...",
+  "objective": "独立评审存量修改 Change Gate 文档（评审对象：/Users/skillre/claude/系统开发/考试助手/specs/CHANGES.md 中「第三批：P2 体验优化与代码卫生」一节，级别 M）。只读评审，不看任何采访对话。\n背景：考试助手（exam-assistant，pnpm monorepo：server Fastify+SQLite+pi SDK / client React+Vite）第三批优化。前两批已完成并通过审计（P0 修复 5 项 + v3 AI 学习教练全量）。第三批 = 体验 5 项（hash 路由/无障碍/错误文案/selectModel 回滚/ProviderForm）+ 卫生 6 项（死代码/nanoid/重复合并/孤儿JSONL/竞态/测试补缺）。用户已确认：全量、轻量 hash 路由（不引依赖）、补 parseFile+路由冒烟测试。\n要求：\n1. 五维逐条检查：完整性/一致性/可行性（逐项与源码核对：shared-check.ts 存在、nanoid 无 import、题型映射 4 处、insights createTutorSession 文件持久化、tutorSessionRepo 无事务、AiService 是否有 inMemory 会话方法）、可测试性（验收命令化）、范围控制（红线含不重建表/不引依赖）；\n2. 必查回归项：目标验收与回归验收对应；特别核查——hash 路由改动 App.tsx 是否影响已有 drillToQuiz/drillToWrong/startTaskQuiz 下钻链、QuestionCard 键盘改动是否破坏现有点击判分、insights 改 inMemory 会话是否影响 SSE 流式、删 validateDrafts 是否有其他引用（ImportPanel 本地校验路径）；\n3. 特别核查：validateDrafts 删除是否安全（共享类型 ValidateDraftsResponse 是否他用）；AiService 现有 runOnce 已用 SessionManager.inMemory（audit 记录），insights 改 inMemory 会话方案是否与现有能力重叠可复用；tutorSessionRepo 事务防重是否真能防并发（SQLite 串行写语义）；\n4. 输出 blocker/concern/suggestion 三类表格，每项带证据（文件:行号）与最小修改建议。",
+  "status": "completed",
+  "createdAt": "2026-08-12T07:02:33.663Z",
+  "updatedAt": "2026-08-12T07:07:25.062Z",
+  "runs": [
+    {
+      "runId": "9879f1c7-3558-4bc2-a0ba-e723033eb2ea",
+      "mode": "workflow",
+      "asyncDir": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/9879f1c7-3558-4bc2-a0ba-e723033eb2ea",
+      "status": "complete",
+      "startedAt": "2026-08-12T07:02:33.665Z",
+      "completedAt": "2026-08-12T07:07:25.062Z"
+    }
+  ],
+  "workflowChildren": [
+    {
+      "workflowRunId": "9879f1c7-3558-4bc2-a0ba-e723033eb2ea",
+      "key": "review3",
+      "status": "completed",
+      "startedAt": "2026-08-12T07:02:33.691Z",
+      "updatedAt": "2026-08-12T07:07:25.003Z",
+      "artifactPaths": [
+        "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c/b462e377/run-0/session.jsonl"
+      ],
+      "runId": "b462e377",
+      "agent": "reviewer",
+      "task": "独立评审存量修改 Change Gate 文档（评审对象：/Users/skillre/claude/系统开发/考试助手/specs/CHANGES.md 中「第三批：P2 体验优化与代码卫生」一节，级别 M）。只读评审，不看任何采访对话。\n背景：考试助手（exam-assistant，pnpm monorepo：server Fastify+SQLite+pi SDK / client React+Vite）第三批优化。前两批已完成并通过审计（P0 修复 5 项 + v3 AI 学习教练全量）。第三批 = 体验 5 项（hash 路由/无障碍/错误文案/selectModel 回滚/ProviderForm）+ 卫生 6 项（死代码/nanoid/重复合并/孤儿JSONL/竞态/测试补缺）。用户已确认：全量、轻量 hash 路由（不引依赖）、补 parseFile+路由冒烟测试。\n要求：\n1. 五维逐条检查：完整性/一致性/可行性（逐项与源码核对：shared-check.ts 存在、nanoid 无 import、题型映射 4 处、insights createTutorSession 文件持久化、tutorSessionRepo 无事务、AiService 是否有 inMemory 会话方法）、可测试性（验收命令化）、范围控制（红线含不重建表/不引依赖）；\n2. 必查回归项：目标验收与回归验收对应；特别核查——hash 路由改动 App.tsx 是否影响已有 drillToQuiz/drillToWrong/startTaskQuiz 下钻链、QuestionCard 键盘改动是否破坏现有点击判分、insights 改 inMemory 会话是否影响 SSE 流式、删 validateDrafts 是否有其他引用（ImportPanel 本地校验路径）；\n3. 特别核查：validateDrafts 删除是否安全（共享类型 ValidateDraftsResponse 是否他用）；AiService 现有 runOnce 已用 SessionManager.inMemory（audit 记录），insights 改 inMemory 会话方案是否与现有能力重叠可复用；tutorSessionRepo 事务防重是否真能防并发（SQLite 串行写语义）；\n4. 输出 blocker/concern/suggestion 三类表格，每项带证据（文件:行号）与最小修改建议。",
+      "completedAt": "2026-08-12T07:07:25.003Z",
+      "sessionPath": "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c/b462e377/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-08-12T07:07:25.003Z",
+        "status": "completed"
+      }
+    }
+  ],
+  "decisions": [],
+  "artifacts": [
+    {
+      "kind": "status",
+      "path": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/9879f1c7-3558-4bc2-a0ba-e723033eb2ea/status.json"
+    },
+    {
+      "kind": "other",
+      "path": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/9879f1c7-3558-4bc2-a0ba-e723033eb2ea/events.jsonl",
+      "description": "Lifecycle events"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c/b462e377/run-0/session.jsonl"
+    }
+  ],
+  "receipts": [],
+  "cwd": "/Users/skillre/claude/系统开发/考试助手",
+  "ownerSessionId": "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c.jsonl",
+  "summary": "Workflow completed with 1 child run(s). Return: {\n  \"key\": \"review3\",\n  \"ok\": true,\n  \"agent\": \"reviewer\",\n  \"runId\": \"b462e377\",\n  \"output\": \"All verification complete. Here is the independent review.\\n\\n---\\n\\n# 第三批 CHANGE.md（M 级）独立评审\\n\\n评审对象：`specs/CHANGES.md`「第三批：P2 体验优化与代码卫生」一节。只读评审，逐项与源码核对（共核查 30+ 文件，实跑测试/类型检查）。\\n\\n## 一、五维逐条核查结论\\n\\n### 1. 完整性 ✅\\n11 项（体验 5 + 卫生 6）全部有「现状→目标→改动点→验收→回归→红线」，且与用户确认口径一致（全量、轻量 hash 路由不引依赖、补 parseFile + 路由冒烟测试）。目标验收每条可执行（typecheck / test / smoke / git diff / 远程实测）。\\n\\n### 2. 一致性 ⚠️ 三处失真（详见下表）\\n- 卫生⑥「providerRepo.get 死代码」**不准确**：有 2 处内部调用\\n- 卫生⑧「题型映射 4 处」**低估**：实际 6 处 UI + 2 处 prompt\\n- 行号引用多处偏移（如 QuestionCard 标注 107-128，实际选项区 96-120，且漏掉 boolean 分支）\\n\\n### 3. 可行性 ⚠️ 一项设计歧义（卫生⑩，见 concern-1）\\n其余各项均与源码能力核对通过：`SessionManager.inMemory` 已在 `runOnce` 中验证可用（AiService.ts:77,107）；hash 路由与 Vite/无 router 现状兼容；`app.inject` 链路可行（register\\\\*Routes 均导出、DATA_DIR 可覆盖）。\\n\\n### 4. 可测试性 ✅\\n验收命令全部可执行。已实测基线：`vitest run` 58 用例全过（与服务记录一致）、client `tsc --noEmit` 0 错误。小缺口：smoke-e2e.ts 无 npm script（手动执行，见 suggestion-4）。\\n\\n### 5. 范 Trace: 2 event(s)."
+}

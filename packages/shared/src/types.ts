@@ -1,10 +1,10 @@
 // 贯通前后端的共享类型（@exam/shared）。前后端禁止各自私定义，一律从此处 import。
 
 // ── 题目与作答 ──────────────────────────────────────────────
-export type QuestionType = "single" | "multiple" | "boolean";
+export type QuestionType = "single" | "multiple" | "boolean" | "essay";
 
-/** 作答/正确答案的取值：单选=选项 index；多选=index 数组；判断=布尔 */
-export type AnswerValue = number | number[] | boolean;
+/** 作答/正确答案的取值：单选=选项 index；多选=index 数组；判断=布尔；主观题=文本 */
+export type AnswerValue = number | number[] | boolean | string;
 
 export type QuestionSource = "paste-ai" | "file";
 
@@ -83,6 +83,8 @@ export interface GradeResponse {
 	correctAnswer: AnswerValue;
 	// v3：判分后是否刚触发掌握达标（可选——P0-2 graded 端点不构造此字段）
 	mastered?: boolean;
+	// 第五批：主观题 AI 批改意见（essay 判分时返回；客观题不构造）
+	feedback?: string;
 }
 
 // ── 导入 API 契约 ───────────────────────────────────────────
@@ -387,6 +389,7 @@ export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
 	single: "单选",
 	multiple: "多选",
 	boolean: "判断",
+	essay: "主观题",
 };
 
 // ── 第三批 体验①：hash 路由解析纯函数（可单测，不依赖 window） ──

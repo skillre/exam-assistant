@@ -7,13 +7,16 @@ interface Props {
 	graded?: GradeResponse | null;
 	onSubmit: (answer: AnswerValue) => void;
 	disabled?: boolean;
+	// 第五批：AI 评分请求中（essay 提交后等待 LLM 判分，按钮禁用 + 文案提示）
+	pending?: boolean;
 }
 
 // 渲染一道题：按题型收集作答；判分后高亮正确/错误。
-export function QuestionCard({ question, graded, onSubmit, disabled }: Props) {
+export function QuestionCard({ question, graded, onSubmit, disabled, pending }: Props) {
 	const [single, setSingle] = useState<number | null>(null);
 	const [multi, setMulti] = useState<number[]>([]);
 	const [bool, setBool] = useState<boolean | null>(null);
+	const [essayText, setEssayText] = useState("");
 
 	const isGraded = !!graded;
 
@@ -21,14 +24,16 @@ export function QuestionCard({ question, graded, onSubmit, disabled }: Props) {
 		if (isGraded) return false;
 		if (question.type === "single") return single !== null;
 		if (question.type === "multiple") return multi.length > 0;
-		return bool !== null;
-	}, [isGraded, question.type, single, multi, bool]);
+		if (question.type === "boolean") return bool !== null;
+		return essayText.trim().length > 0;
+	}, [isGraded, question.type, single, multi, bool, essayText]);
 
 	function submit() {
 		if (question.type === "single" && single !== null) onSubmit(single);
 		else if (question.type === "multiple")
 			onSubmit([...multi].sort((a, b) => a - b));
 		else if (question.type === "boolean" && bool !== null) onSubmit(bool);
+		else if (question.type === "essay" && essayText.trim()) onSubmit(essayText.trim());
 	}
 
 	function optionClass(idx: number): string {
@@ -163,6 +168,24 @@ export function QuestionCard({ question, graded, onSubmit, disabled }: Props) {
 				))
 			)}
 
+			{question.type === "essay" && !isGraded && (
+				<textarea
+					className="essay-input"
+					rows={4}
+					placeholder="输入你的答案……"
+					value={essayText}
+					disabled={disabled}
+					onChange={(e) => setEssayText(e.target.value)}
+				/>
+			)}
+
+			{isGraded && graded?.feedback && (
+				<div className="tutor">
+					<strong>批改意见：</strong>
+					{graded.feedback}
+				</div>
+			)}
+
 			{isGraded && question.explanation && (
 				<div className="tutor">
 					<strong>解析：</strong>
@@ -174,10 +197,10 @@ export function QuestionCard({ question, graded, onSubmit, disabled }: Props) {
 				<div className="row" style={{ marginTop: 12 }}>
 					<button
 						className="btn"
-						disabled={!canSubmit || disabled}
+						disabled={!canSubmit || disabled || pending}
 						onClick={submit}
 					>
-						提交作答
+						{pending ? "AI 批改中…" : "提交作答"}
 					</button>
 				</div>
 			)}

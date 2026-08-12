@@ -61,7 +61,42 @@ describe("parseFileBuffer JSON", () => {
 		expect(() =>
 			parseFileBuffer(
 				"t.json",
-				Buffer.from(JSON.stringify([{ ...single, type: "essay" }])),
+				Buffer.from(JSON.stringify([{ ...single, type: "fill" }])),
+			),
+		).toThrow();
+	});
+
+	// 第五批：essay 成为合法题型
+	it("essay 题合法（answer=参考答案文本，非空）", () => {
+		const drafts = parseFileBuffer(
+			"t.json",
+			Buffer.from(
+				JSON.stringify([
+					{
+						type: "essay",
+						stem: "简述 TCP 三次握手",
+						options: [],
+						answer: "SYN, SYN-ACK, ACK",
+						explanation: "评分要点：三个报文段",
+						tags: ["网络"],
+					},
+				]),
+			),
+		);
+		expect(drafts).toHaveLength(1);
+		expect(drafts[0]!.type).toBe("essay");
+		expect(drafts[0]!.answer).toBe("SYN, SYN-ACK, ACK");
+	});
+
+	it("essay 空参考答案被拒绝", () => {
+		expect(() =>
+			parseFileBuffer(
+				"t.json",
+				Buffer.from(
+					JSON.stringify([
+						{ type: "essay", stem: "简述", options: [], answer: "   " },
+					]),
+				),
 			),
 		).toThrow();
 	});
@@ -78,6 +113,27 @@ describe("parseFileBuffer CSV", () => {
 		expect(drafts[1]!.type).toBe("boolean");
 		expect(drafts[1]!.answer).toBe(true);
 		expect(drafts[1]!.tags).toEqual(["常识"]);
+	});
+
+	it("CSV essay 行：answer 列=裸文本参考答案", () => {
+		const csv =
+			"type,stem,options,answer,explanation,tags\nessay,简述 TCP 握手,,\"SYN, SYN-ACK, ACK\",评分要点,网络\n";
+		const drafts = parseFileBuffer("t.csv", Buffer.from(csv));
+		expect(drafts).toHaveLength(1);
+		expect(drafts[0]!.type).toBe("essay");
+		expect(drafts[0]!.answer).toBe("SYN, SYN-ACK, ACK");
+		expect(drafts[0]!.options).toEqual([]);
+	});
+
+	it("CSV essay 往返：导出带 JSON 引号的 answer 列再导入仍还原为文本（评审 #6）", () => {
+		// 导出 questions.csv 的 answer 列是 JSON.stringify("SYN, ACK") = '"SYN, ACK"'，
+		// RFC4180 编码为含逗号+引号+翻倍引号的字段，csv-parse 解析后应为裸 JSON 文本，
+		// flatRowToRaw essay 分支剥掉 JSON 引号还原成参考文本。
+		const ref = '"SYN, ACK"';
+		const field = '"' + ref.replace(/"/g, '""') + '"';
+		const csv = "type,stem,options,answer,explanation,tags\nessay,简述握手,," + field + ",要点,网络\n";
+		const drafts = parseFileBuffer("t.csv", Buffer.from(csv));
+		expect(drafts[0]!.answer).toBe("SYN, ACK");
 	});
 
 	it("畸形 CSV（空文件/只有表头）不抛非预期异常", () => {

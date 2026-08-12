@@ -105,8 +105,12 @@ export class AiService {
 		}
 	}
 
-	/** 一次性会话（DEC-11：导入解析用），用完 dispose，不落 JSONL */
-	async runOnce(systemPrompt: string, userPrompt: string): Promise<string> {
+	/** 一次性会话（DEC-11：导入解析用），用完 dispose，不落 JSONL。timeoutMs 超时抛错（第五批 essay 评分用）。 */
+	async runOnce(
+		systemPrompt: string,
+		userPrompt: string,
+		timeoutMs?: number,
+	): Promise<string> {
 		const model = this.requireModel();
 		const { session } = await createAgentSession({
 			cwd: this.cwd,
@@ -126,7 +130,20 @@ export class AiService {
 						streamError = ev.error?.errorMessage ?? "模型返回错误";
 				}
 			});
-			await session.prompt(buildSingleTurn(systemPrompt, userPrompt));
+			const run = session.prompt(buildSingleTurn(systemPrompt, userPrompt));
+			if (timeoutMs && timeoutMs > 0) {
+				await Promise.race([
+					run,
+					new Promise<never>((_, reject) =>
+						setTimeout(
+							() => reject(new Error(`AI 评分超时（${timeoutMs}ms）`)),
+							timeoutMs,
+						),
+					),
+				]);
+			} else {
+				await run;
+			}
 			unsub();
 			const err = streamError ?? lastMessageError(session);
 			if (err) throw new Error(`模型调用失败：${err}`);

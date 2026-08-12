@@ -1,0 +1,169 @@
+{
+  "runId": "37aaa2f7",
+  "agent": "reviewer",
+  "task": "[Read from: /Users/skillre/claude/系统开发/考试助手/plan.md, /Users/skillre/claude/系统开发/考试助手/progress.md]\n\n对 /Users/skillre/claude/系统开发/考试助手 做代码质量与安全审计（考试助手系统，pnpm monorepo，packages/server + shared + client）。重点检查：① 测试现状——列出全部 *.test.ts，跑 pnpm test 验证是否通过，评估覆盖缺口（哪些核心逻辑无测试）；② 类型安全——跑 pnpm typecheck，列出现有类型错误；③ 安全——模型 API Key 加密存储链路（secretBox AES-GCM、APP_SECRET 生成与持久化）、CORS/SSRF 风险（provider Base URL 任意性）、SQL 注入面、输入校验边界（导入解析、批量操作参数）、敏感信息泄漏（日志/错误回显）；④ 死代码与未用导出；⑤ 依赖健康度（package.json 依赖是否必要、有无过时/风险项）。每条给文件:行号或命令输出证据。中文输出，结论分级：正常/风险/缺陷。",
+  "exitCode": 0,
+  "processSignal": "SIGTERM",
+  "usage": {
+    "input": 49545,
+    "output": 19457,
+    "cacheRead": 980224,
+    "cacheWrite": 0,
+    "cost": 0.0075644436,
+    "turns": 30
+  },
+  "model": "opencode-go/deepseek-v4-flash:high",
+  "attemptedModels": [
+    "opencode-go/deepseek-v4-flash:high"
+  ],
+  "modelAttempts": [
+    {
+      "model": "opencode-go/deepseek-v4-flash:high",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 49545,
+        "output": 19457,
+        "cacheRead": 980224,
+        "cacheWrite": 0,
+        "cost": 0.0075644436,
+        "turns": 30
+      }
+    }
+  ],
+  "durationMs": 339271,
+  "toolCount": 75,
+  "launchContractDigest": "fbbdc0757be40d01537cee282d969432c77fe29dd5aea88424878bb29c3da6c6",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:cde881f17285e1c7"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:cde881f17285e1c7"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "attested",
+    "evidenceStatus": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "五项检查均给出文件:行号证据与严重度分级：①测试：4 个 *.test.ts（grade/secretBox/questionRepo/LearningDataCollector）实测 pnpm test 32/32 通过，路由层/parseFile/AiService/providerRepo/client 等核心逻辑 0 测试；②typecheck 实测 0 错误（strict+noUncheckedIndexedAccess），但 providers PUT(banks/providers.ts:12-16)、批量参数元素(questionRepo.ts:200) 无运行时校验；③安全：secretBox.ts:20-56 AES-GCM+600 权限设计正确，SQL 全参数化，但 baseUrl 任意性 SSRF(modelRuntimeSetup.ts:23)、无鉴权、/api/health 泄漏 DATA_DIR(index.ts:25)、APP_SECRET 轮换即崩(secretBox.ts:56+index.ts:41)；④死代码 6 处：shared-check.ts、listWrongQuestions、getState、providerRepo.get、practiceRepo.remove、nanoid 依赖；⑤pnpm audit 实测 15 漏洞(10 high/5 moderate)：xlsx@0.18.5 无修复版、fastify@5.10.0 传递漏洞可升级、dompurify 3.4.12→3.4.13 可修"
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "pnpm test",
+          "result": "passed",
+          "summary": "4 文件 32 用例全过（server 包），退出码 0"
+        },
+        {
+          "command": "pnpm typecheck",
+          "result": "passed",
+          "summary": "全 workspace tsc --noEmit 0 错误"
+        },
+        {
+          "command": "pnpm --filter @exam/server build",
+          "result": "passed",
+          "summary": "tsc 编译产物成功，退出码 0"
+        },
+        {
+          "command": "pnpm audit --prod",
+          "result": "failed",
+          "summary": "15 漏洞：10 high（xlsx 无修复版、fastify 传递 fast-uri/find-my-way/brace-expansion/undici）+ 5 moderate（dompurify/undici）"
+        }
+      ],
+      "validationOutput": [
+        "测试：packages/server vitest 32 passed；typecheck：0 errors；audit：15 vulnerabilities (5 moderate | 10 high)"
+      ],
+      "residualRisks": [
+        "xlsx@0.18.5 原型污染+ReDoS 无 npm 修复版，需换库（exceljs 等）",
+        "SSRF：baseUrl 无 scheme/IP 校验，/api/providers/:id/test 携带明文 Key 请求任意 URL；单用户自托管半设计内，公网暴露即风险",
+        "全 API 无鉴权，dev 模式 0.0.0.0:3000 局域网直连全权",
+        "APP_SECRET 轮换导致启动即 process.exit(1)，无降级与恢复文档",
+        "fastify/undici 传递漏洞依赖上游升级（fastify→5.11.3 可消大部分）",
+        "verify.ts 运维脚本（可含 Key 环境变量）打进 dist 产物",
+        "路由层/导入解析/批量参数无自动化测试与运行时校验"
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "只读审计，无代码改动（任务指定读取的 plan.md/progress.md 不存在）",
+      "reviewFindings": [
+        "正常: 测试 32/32 通过（grading/secretBox/questionRepo/LearningDataCollector）",
+        "正常: typecheck 0 错误，strict+noUncheckedIndexedAccess+verbatimModuleSyntax",
+        "正常: Key 加密链路（AES-256-GCM 随机 IV+tag、.app_secret 0600、仅内存明文、configured 脱敏）",
+        "正常: SQL 全参数化无注入面；导入链路 zod 双重把关；Markdown 经 DOMPurify",
+        "缺陷: 路由层/parseFile/AiService/providerRepo/client 零测试（核心导入解析与批量操作无覆盖）",
+        "缺陷: 死代码 shared-check.ts（Phase 1 占位无引用）；未用导出 listWrongQuestions/getState/providerRepo.get/practiceRepo.remove；nanoid 死依赖",
+        "缺陷: providers PUT 无 body 校验(null→500)、批量参数元素未校验类型(非字符串→500)、currentIndex 无上界、/api/health 泄漏 DATA_DIR 路径",
+        "风险: SSRF（modelRuntimeSetup.ts:23 baseUrl 任意性+test 端点带 Key 外发，无 scheme/IP 校验）",
+        "风险: 无鉴权直连 0.0.0.0:3000",
+        "风险: pnpm audit 15 漏洞——xlsx 高危无修复版（需换库）、fastify 传递漏洞（升级 5.11.3 可消）、dompurify XSS advisory（升级 3.4.13 可修）",
+        "风险: APP_SECRET 轮换即启动崩溃，无降级/恢复路径"
+      ],
+      "manualNotes": "任务要求读取的 plan.md/progress.md 在仓库中不存在（根目录与 .pi-glla/ 均无），已改用 git HEAD(1410d48) 源码审计。结论：无 blocker 级缺陷，建议优先级——(1) pnpm update fastify dompurify 消 8 个可修漏洞；(2) xlsx 换库或接受并限制上传来源；(3) baseUrl 校验（scheme 白名单+禁止内网段）若考虑公网部署；(4) 补路由层与 parseFile 测试；(5) 清理死代码与 nanoid"
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": true
+    }
+  },
+  "transcriptPath": "/Users/skillre/claude/系统开发/考试助手/.pi-subagents/artifacts/37aaa2f7_reviewer_0_transcript.jsonl",
+  "timestamp": 1786335882427
+}

@@ -9,10 +9,10 @@ const SYSTEM_PROMPT = `你是一个考试题目解析器。用户会粘贴一段
 你需要把它解析成结构化的 JSON 数组。严格遵守：
 - 只输出 JSON 数组本身，不要任何解释、不要 markdown 代码围栏。
 - 每个元素字段：type、stem、options、answer、explanation(可选)、tags(可选)。
-- type 取值：single(单选) | multiple(多选) | boolean(判断)。
-- options：选项文本数组；判断题固定为 ["正确","错误"]。
+- type 取值：single(单选) | multiple(多选) | boolean(判断) | essay(主观题)。
+- options：选项文本数组；判断题固定为 ["正确","错误"]；essay 题固定为 []。
 - answer：single 为正确选项的下标(从 0 开始的整数)；multiple 为下标数组；
-  boolean 为 true(正确)/false(错误)。
+  boolean 为 true(正确)/false(错误)；essay 为参考答案文本(完整一句话)。
 - explanation：若原文含解析则填入，否则省略。
 - tags：知识点标签数组，可省略。
 - 下标必须落在 options 范围内。无法确定答案的题目请跳过，不要编造。`;

@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import { getDb } from "./db/index.js";
+import { migrateEssayCheck } from "./db/migrate.js";
 import { DATA_DIR } from "./config/paths.js";
 import { AiService } from "./ai/AiService.js";
 import { registerProviderRoutes } from "./routes/providers.js";
@@ -17,6 +18,7 @@ const PORT = Number(process.env.PORT ?? 3000);
 async function main(): Promise<void> {
 	// 建库/建表 + 确保数据目录存在（Phase 1 验收：启动即建 app.db 六表）
 	getDb();
+	migrateEssayCheck(); // 第五批：既有库 questions.type CHECK 扩 'essay'（幂等）
 
 	// pi SDK 集成层单例（Phase 2）。provider 变更后经 ai.reloadProviders() 热更。
 	const ai = await AiService.create();
@@ -31,7 +33,7 @@ async function main(): Promise<void> {
 	registerProviderRoutes(app, ai);
 	registerModelRoutes(app, ai);
 	registerImportRoutes(app, ai);
-	registerQuizRoutes(app);
+	registerQuizRoutes(app, ai); // 第五批：主观题 AI 评分需要 runOnce
 	registerBankRoutes(app);
 	registerTutorRoutes(app, ai);
 	registerInsightsRoutes(app, ai);

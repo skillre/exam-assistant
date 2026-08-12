@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS banks (          -- 题库
 CREATE TABLE IF NOT EXISTS questions (      -- 题目
   id          TEXT PRIMARY KEY,
   bank_id     TEXT NOT NULL REFERENCES banks(id) ON DELETE CASCADE,
-  type        TEXT NOT NULL CHECK(type IN ('single','multiple','boolean')),
+  type        TEXT NOT NULL CHECK(type IN ('single','multiple','boolean','essay')),  -- 第五批：+essay（唯一 DDL 变化）
   stem        TEXT NOT NULL,
   options     TEXT NOT NULL,                -- JSON 数组
   answer      TEXT NOT NULL,                -- JSON: number | number[] | boolean

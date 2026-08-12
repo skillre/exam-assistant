@@ -158,7 +158,7 @@ export const attemptRepo = {
 		if (questionIds.length === 0) return result;
 		const stmt = db.prepare(
 			`SELECT is_correct, user_answer FROM attempts
-       WHERE question_id = ? ORDER BY answered_at DESC LIMIT 1`,
+       WHERE question_id = ? ORDER BY answered_at DESC, rowid DESC LIMIT 1`,
 		);
 		for (const qid of questionIds) {
 			const row = stmt.get(qid) as

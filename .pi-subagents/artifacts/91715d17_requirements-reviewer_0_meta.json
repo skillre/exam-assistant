@@ -1,0 +1,146 @@
+{
+  "runId": "91715d17",
+  "agent": "requirements-reviewer",
+  "task": "独立评审存量修改 Change Gate 文档（评审对象：/Users/skillre/claude/系统开发/考试助手/specs/CHANGES.md 中「第一批：P0 功能可用性修复」一节）。\n背景：这是考试助手系统（exam-assistant，pnpm monorepo：packages/server Fastify+SQLite+pi SDK / packages/client React+Vite）的优化方案第一批，只修 5 个功能可用性缺陷，用户已确认影响面全栈、回归验收含远程部署实测、范围红线=安全项/备份/部署架构不碰。\n要求：\n1. 只读评审，不看任何采访对话，以 specs/CHANGES.md 第一批内容 + 项目源码现状为准；\n2. 从五个维度逐条检查：完整性（现状/目标/改动点/验收是否齐全）、一致性（改动点与目标是否对应、验收是否可衡量）、可行性（改动点是否与实际代码结构匹配——可读源码核对：sse.ts、TutorPanel.tsx、InsightsPage.tsx、QuizPage.tsx、SettingsPage.tsx、routes/models.ts、ai/sessionHistory.ts、routes/tutor.ts、routes/insights.ts、shared/types.ts）、可测试性（目标验收是否命令化）、范围控制（红线是否清晰、有无蔓延）；\n3. 必查回归项：目标验收与回归验收是否一一对应，缺回归=blocker；\n4. 输出 blocker/concern/suggestion 三类表格，每项带证据（文件:行号或文档原文）与最小修改建议。",
+  "exitCode": 0,
+  "processSignal": "SIGTERM",
+  "usage": {
+    "input": 29192,
+    "output": 5497,
+    "cacheRead": 130048,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 9
+  },
+  "model": "xiaomi-token-plan-cn/mimo-v2.5-pro:high",
+  "attemptedModels": [
+    "xiaomi-token-plan-cn/mimo-v2.5-pro:high"
+  ],
+  "modelAttempts": [
+    {
+      "model": "xiaomi-token-plan-cn/mimo-v2.5-pro:high",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 29192,
+        "output": 5497,
+        "cacheRead": 130048,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 9
+      }
+    }
+  ],
+  "durationMs": 170161,
+  "toolCount": 25,
+  "launchContractDigest": "5a0ad2a9b0904b037786ff51c14e18f68f2410d45def1e447eb236870de2b923",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:cde881f17285e1c7"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:cde881f17285e1c7"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "attested",
+    "evidenceStatus": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "14 findings with file paths, line numbers, and verbatim quotes from CHANGES.md; 6 blockers, 6 concerns, 2 suggestions"
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [],
+      "validationOutput": [],
+      "residualRisks": [
+        "目标②（续做恢复判分态）需新增服务端 API + 仓储，当前改动点未覆盖，实现可能超 M 级工作量",
+        "sessionHistory 过滤策略与 LearningDataCollector.slice(1) 的对齐风险：若 filter 位置不同，学情分析 tutorHighlights 可能少一条或多一条",
+        "tutor.ts/insights.ts finally 改造后若 reply.raw 已关闭，sse.error() 调用可能抛未捕获异常",
+        "SSE 超时时长未定义——30s 对 AI 长文本生成可能太短，60s 对用户感知可能太长，需产品决策"
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "read-only review of CHANGES.md batch 1 against project source; no files modified",
+      "reviewFindings": [
+        "blocker: CHANGES.md 目标②+目标验收 - 缺少续做恢复判分态和答疑历史过滤的可观察验收项",
+        "blocker: CHANGES.md 回归验收 - 目标验收与回归验收未一一对应，缺 sessionHistory 回归和 SSE 超时回归",
+        "blocker: CHANGES.md 目标① - SSE 超时时长未定义，无法写验收",
+        "blocker: CHANGES.md 目标③ - SettingsPage.refresh() 未调 getActiveModel，client.ts 无对应方法",
+        "blocker: CHANGES.md 目标② - QuizPage.finish() 不清 localStorage，getScorecard 抛错后续做仍卡",
+        "blocker: CHANGES.md 目标② - resumeSession 清空 gradedById，无服务端 API 支持恢复判分态",
+        "concern: CHANGES.md 改动点-sessionHistory - 过滤策略与 LearningDataCollector.slice(1) 对齐方式未明确",
+        "concern: CHANGES.md 改动点-tutor/insights - finally 改造需处理 reply.raw 已关闭的安全性",
+        "concern: CHANGES.md 目标① - SSE 超时路径无验收证明",
+        "concern: CHANGES.md 目标② - 实现需新增 API+仓储，超出 M 级预估",
+        "concern: CHANGES.md 远程回归验收 - 4 场景无具体操作步骤和预期结果",
+        "concern: CHANGES.md 整体 - sessionHistory 过滤用例未显式列入目标验收",
+        "suggestion: CHANGES.md 改动点-shared/types.ts - GET 返回体类型不确定（如需）",
+        "suggestion: CHANGES.md 整体 - 范围红线需确认超时用原生 AbortSignal.timeout 而非外部库"
+      ],
+      "manualNotes": ""
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": false
+    }
+  },
+  "transcriptPath": "/Users/skillre/claude/系统开发/考试助手/.pi-subagents/artifacts/91715d17_requirements-reviewer_0_transcript.jsonl",
+  "timestamp": 1786502087366
+}

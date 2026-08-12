@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "1f0cfe91-c23a-4828-b1c5-cbedc3e1b8ae",
+  "title": "独立评审 /Users/skillre/claude/系统开发/考试助手/specs/CHANGES.md 的第五批节（2026-08-12 第五批：主观题 + AI 评分，文件末尾新增节）。",
+  "objective": "独立评审 /Users/skillre/claude/系统开发/考试助手/specs/CHANGES.md 的第五批节（2026-08-12 第五批：主观题 + AI 评分，文件末尾新增节）。\n评审要求：\n1. 只评审第五批节，不评审历史批次。\n2. 按完整性/一致性/可行性/可测试性/范围控制五维度对抗性评审，重点检查：目标验收每条可执行性；回归验收是否覆盖旧功能（客观题判分/导入导出/学情闭环/路由）；与既有系统事实是否一致（快速验证：packages/shared/src/types.ts 的 QuestionType/AnswerValue/GradeResponse、packages/server/src/grading/grade.ts、packages/server/src/routes/quiz.ts grade 端点、packages/server/src/ai/AiService.ts runOnce、packages/client/src/components/QuestionCard.tsx、packages/server/src/import/parseFile.ts、packages/server/src/db/schema.ts attempts 表）；边界情形（essay 空答案、AI 超时、AI 返回非 JSON、错题本/重练语义）；范围红线（schema 零迁移、零新依赖）。\n3. 输出：阻断项（blocker）/建议项（concern）/确认项表格，每项带证据（文件:行号或代码事实）与最小修改建议。\n4. 只读评审，不修改任何文件。\n5. 报告控制在 120 行内，结尾 BLOCKERS: 段（blocker 列表或 none）。\n时间预算：总 tool 调用 ≤25 次，读完 CHANGE.md 后并行快速 grep 验证关键事实即可，不要逐文件精读。",
+  "status": "completed",
+  "createdAt": "2026-08-12T14:18:23.019Z",
+  "updatedAt": "2026-08-12T14:20:07.158Z",
+  "runs": [
+    {
+      "runId": "9ade8e72-284d-49f3-aa1c-689148ec05fc",
+      "mode": "workflow",
+      "asyncDir": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/9ade8e72-284d-49f3-aa1c-689148ec05fc",
+      "status": "complete",
+      "startedAt": "2026-08-12T14:18:23.021Z",
+      "completedAt": "2026-08-12T14:20:07.158Z"
+    }
+  ],
+  "workflowChildren": [
+    {
+      "workflowRunId": "9ade8e72-284d-49f3-aa1c-689148ec05fc",
+      "key": "main",
+      "status": "completed",
+      "startedAt": "2026-08-12T14:18:23.039Z",
+      "updatedAt": "2026-08-12T14:20:07.102Z",
+      "artifactPaths": [
+        "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c/286aa516/run-0/session.jsonl"
+      ],
+      "runId": "286aa516",
+      "agent": "requirements-reviewer",
+      "task": "独立评审 /Users/skillre/claude/系统开发/考试助手/specs/CHANGES.md 的第五批节（2026-08-12 第五批：主观题 + AI 评分，文件末尾新增节）。\n评审要求：\n1. 只评审第五批节，不评审历史批次。\n2. 按完整性/一致性/可行性/可测试性/范围控制五维度对抗性评审，重点检查：目标验收每条可执行性；回归验收是否覆盖旧功能（客观题判分/导入导出/学情闭环/路由）；与既有系统事实是否一致（快速验证：packages/shared/src/types.ts 的 QuestionType/AnswerValue/GradeResponse、packages/server/src/grading/grade.ts、packages/server/src/routes/quiz.ts grade 端点、packages/server/src/ai/AiService.ts runOnce、packages/client/src/components/QuestionCard.tsx、packages/server/src/import/parseFile.ts、packages/server/src/db/schema.ts attempts 表）；边界情形（essay 空答案、AI 超时、AI 返回非 JSON、错题本/重练语义）；范围红线（schema 零迁移、零新依赖）。\n3. 输出：阻断项（blocker）/建议项（concern）/确认项表格，每项带证据（文件:行号或代码事实）与最小修改建议。\n4. 只读评审，不修改任何文件。\n5. 报告控制在 120 行内，结尾 BLOCKERS: 段（blocker 列表或 none）。\n时间预算：总 tool 调用 ≤25 次，读完 CHANGE.md 后并行快速 grep 验证关键事实即可，不要逐文件精读。",
+      "completedAt": "2026-08-12T14:20:07.102Z",
+      "sessionPath": "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c/286aa516/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-08-12T14:20:07.102Z",
+        "status": "completed"
+      }
+    }
+  ],
+  "decisions": [],
+  "artifacts": [
+    {
+      "kind": "status",
+      "path": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/9ade8e72-284d-49f3-aa1c-689148ec05fc/status.json"
+    },
+    {
+      "kind": "other",
+      "path": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/9ade8e72-284d-49f3-aa1c-689148ec05fc/events.jsonl",
+      "description": "Lifecycle events"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c/286aa516/run-0/session.jsonl"
+    }
+  ],
+  "receipts": [],
+  "cwd": "/Users/skillre/claude/系统开发/考试助手",
+  "ownerSessionId": "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c.jsonl",
+  "summary": "Workflow completed with 1 child run(s). Return: {\n  \"key\": \"main\",\n  \"ok\": true,\n  \"agent\": \"requirements-reviewer\",\n  \"runId\": \"286aa516\",\n  \"output\": \"# 第五批评审（2026-08-12 第五批：主观题 + AI 评分）\\n\\n| # | severity | dimension | requirement-ref | finding | recommendation |\\n|---|----------|-----------|-----------------|---------|----------------|\\n| 1 | blocker | consistency | 目标验收「git diff 确认：schema.ts 零改动」+ 范围红线 | `db/schema.ts:15` 有 `CHECK(type IN ('single','multiple','boolean'))`，SQLite 不能 ALTER CHECK 约束、必须重建表；不改 schema.ts 则 essay 题 INSERT 直接被 CHECK 拒绝，任何 essay 导入必失败——红线与\\\"新增 essay 题型\\\"自相矛盾 | 红线改为\\\"仅允许 questions.type CHECK 扩增 'essay'（其余表/列零改动）\\\"，验收增加\\\"导入 essay 成功 + git diff 仅 CHECK 一行变化\\\" |\\n| 2 | blocker | completeness | 改动点-服务端 / 影响面 | 导入全路径都过 `import/questionSchema.ts` 校验（parseFile.ts:91/96、parseWithAi.ts:40 均调 validateDrafts），但该文件 `:17` `z.enum(['single','multiple','boolean'])` 与 `:20` `answer: z.union([z.number(), z.array(z.number()), z.boolean()])` 无 string 分支；改动点只列 parseFile.ts，漏了 questionSchema.ts——CSV/JSON/粘贴导入 essay 行在 zod 层即被 Trace: 2 event(s)."
+}

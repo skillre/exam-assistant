@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "cbc0b9c0-028c-4e52-972d-07e5a5041c9b",
+  "title": "Workflow: requirements-reviewer",
+  "objective": "Workflow: requirements-reviewer",
+  "status": "failed",
+  "createdAt": "2026-08-12T11:46:32.724Z",
+  "updatedAt": "2026-08-12T11:46:33.109Z",
+  "runs": [
+    {
+      "runId": "2e20bb4b-2320-403a-bb4b-c48d9acae7d5",
+      "mode": "workflow",
+      "asyncDir": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/2e20bb4b-2320-403a-bb4b-c48d9acae7d5",
+      "status": "failed",
+      "startedAt": "2026-08-12T11:46:32.726Z",
+      "completedAt": "2026-08-12T11:46:33.109Z"
+    }
+  ],
+  "workflowChildren": [
+    {
+      "workflowRunId": "2e20bb4b-2320-403a-bb4b-c48d9acae7d5",
+      "key": "main",
+      "status": "failed",
+      "startedAt": "2026-08-12T11:46:32.748Z",
+      "updatedAt": "2026-08-12T11:46:32.883Z",
+      "artifactPaths": [],
+      "agent": "requirements-reviewer",
+      "completedAt": "2026-08-12T11:46:32.883Z",
+      "heartbeat": {
+        "updatedAt": "2026-08-12T11:46:32.883Z",
+        "status": "failed",
+        "message": "effectiveParams.task?.trim is not a function"
+      }
+    }
+  ],
+  "decisions": [],
+  "artifacts": [
+    {
+      "kind": "status",
+      "path": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/2e20bb4b-2320-403a-bb4b-c48d9acae7d5/status.json"
+    },
+    {
+      "kind": "other",
+      "path": "/var/folders/k5/plnkf7qs5992_9713c_b34nc0000gn/T/pi-subagents-uid-501/async-subagent-runs/2e20bb4b-2320-403a-bb4b-c48d9acae7d5/events.jsonl",
+      "description": "Lifecycle events"
+    }
+  ],
+  "receipts": [],
+  "cwd": "/Users/skillre/claude/系统开发/考试助手",
+  "ownerSessionId": "/Users/skillre/.pi/agent/sessions/--Users-skillre-claude-系统开发-考试助手--/2026-08-10T04-16-34-825Z_019fe9e2-fc09-77ea-b320-2d5c36e7f93c.jsonl",
+  "summary": "Error: Run 'main' failed: effectiveParams.task?.trim is not a function\n    at MessagePort.<anonymous> ([worker eval]:287:23)\n    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:845:20)\n    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)"
+}

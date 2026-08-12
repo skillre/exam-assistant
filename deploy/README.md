@@ -96,6 +96,9 @@ CSV 示例（首行为表头）：
 type,stem,options,answer,explanation,tags
 single,1+1=?,1|2,1,等于2,基础
 boolean,地球是圆的,,true,常识,常识
+essay,简述 TCP 三次握手,,"SYN, SYN-ACK, ACK",评分要点：三个报文段,网络
 ```
+
+主观题（essay）：options 留空，answer 列填参考答案文本（AI 评分时连同评分要点一起作为判分依据）；字段含逗号时用双引号包裹（如上例）。
 
 粘贴文本导入（AI 解析）支持任意自然语言描述的题目（如"单选：1+1=？ A.1 B.2 C.3 答案B"），解析结果先预览确认再入库。

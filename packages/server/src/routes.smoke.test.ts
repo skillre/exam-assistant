@@ -28,6 +28,15 @@ const aiStub = {
 	streamPrompt: async () => {},
 } as never;
 
+// 第五批：essay AI 评分的可编程桩（对/错/失败/超时/非法输出由用例切换）
+let essayGradeRaw = '{"isCorrect":true,"feedback":"答得不错"}';
+const essayAi = {
+	runOnce: async () => {
+		if (essayGradeRaw === "__THROW__") throw new Error("模型挂了");
+		return essayGradeRaw;
+	},
+} as never;
+
 beforeAll(async () => {
 	tempDir = mkdtempSync(join(tmpdir(), "exam-routes-"));
 	// 关键：必须在任何路由模块加载前设置 DATA_DIR（config/paths.ts 在模块加载时锁定路径）。
@@ -46,7 +55,7 @@ beforeAll(async () => {
 	registerProviderRoutes(app, aiStub);
 	registerModelRoutes(app, aiStub);
 	registerImportRoutes(app, aiStub);
-	registerQuizRoutes(app);
+	registerQuizRoutes(app, essayAi);
 	registerBankRoutes(app);
 	await app.ready();
 });
@@ -299,5 +308,116 @@ describe("HTTP 全链路（routes.smoke，评审 S3）", () => {
 		const hist2 = await app.inject({ method: "GET", url: "/api/history/practices" });
 		const items2 = hist2.json() as Array<{ id: string; completed: boolean }>;
 		expect(items2.find((x) => x.id === sid)!.completed).toBe(true);
+	});
+
+	it("第五批：essay 题导入 → AI 判分（对/错/失败/非法/空答案）", async () => {
+		// 建库 + 导入 essay 题（answer=参考答案文本）
+		const nb = await post("/api/banks", { name: "第五批库" });
+		expect(nb.statusCode).toBe(201);
+		const nbId = (nb.json() as { id: string }).id;
+		const imp = await post("/api/import/commit", {
+			bankId: nbId,
+			questions: [
+				{
+					type: "essay",
+					stem: "简述 TCP 三次握手",
+					options: [],
+					answer: "SYN, SYN-ACK, ACK",
+					explanation: "评分要点：三个报文段",
+					tags: ["网络"],
+				},
+			],
+		});
+		expect(imp.statusCode).toBe(201);
+		const qs = await app.inject({
+			method: "GET",
+			url: `/api/banks/${nbId}/questions`,
+		});
+		const qid = (qs.json() as Array<{ id: string }>)[0]!.id;
+
+		// 判对：mock 返回 isCorrect=true + feedback
+		essayGradeRaw = '{"isCorrect":true,"feedback":"三个报文段都说到了"}';
+		const g1 = await post("/api/quiz/grade", {
+			questionId: qid,
+			userAnswer: "SYN 然后 ACK",
+		});
+		expect(g1.statusCode).toBe(200);
+		const b1 = g1.json() as {
+			isCorrect: boolean;
+			feedback: string;
+			correctAnswer: string;
+			attemptId: string;
+		};
+		expect(b1.isCorrect).toBe(true);
+		expect(b1.feedback).toBe("三个报文段都说到了");
+		expect(b1.correctAnswer).toBe("SYN, SYN-ACK, ACK"); // 参考文本还原
+
+		// 判错：错题本出现该题
+		essayGradeRaw = '{"isCorrect":false,"feedback":"漏了 SYN-ACK"}';
+		const g2 = await post("/api/quiz/grade", {
+			questionId: qid,
+			userAnswer: "SYN 然后直接 ACK",
+		});
+		expect(g2.statusCode).toBe(200);
+		expect((g2.json() as { isCorrect: boolean }).isCorrect).toBe(false);
+		const wb = await app.inject({ method: "GET", url: "/api/quiz/wrong" });
+		const wbItems = wb.json() as Array<{ question: { type: string } }>;
+		expect(wbItems.some((w) => w.question.type === "essay")).toBe(true);
+
+		// AI 失败：502 且不落库（再判分前 attempts 数不变）
+		const attBefore = await app.inject({
+			method: "GET",
+			url: "/api/quiz/wrong",
+		});
+		essayGradeRaw = "__THROW__";
+		const g3 = await post("/api/quiz/grade", {
+			questionId: qid,
+			userAnswer: "随便写的",
+		});
+		expect(g3.statusCode).toBe(502);
+		const attAfter = await app.inject({
+			method: "GET",
+			url: "/api/quiz/wrong",
+		});
+		expect(attAfter.json()).toEqual(attBefore.json()); // 未新增错题 = 未落库
+
+		// 评分输出非法（非 JSON）：502 不落库
+		essayGradeRaw = "不是JSON";
+		const g4 = await post("/api/quiz/grade", {
+			questionId: qid,
+			userAnswer: "再来一次",
+		});
+		expect(g4.statusCode).toBe(502);
+
+		// 评分输出缺 feedback：502（zod 拒绝）
+		essayGradeRaw = '{"isCorrect":true}';
+		const g5 = await post("/api/quiz/grade", {
+			questionId: qid,
+			userAnswer: "SYN",
+		});
+		expect(g5.statusCode).toBe(502);
+
+		// 空/空白答案：400 且不调 AI（runOnce 抛错则说明被调用了）
+		essayGradeRaw = "__THROW__";
+		const g6 = await post("/api/quiz/grade", {
+			questionId: qid,
+			userAnswer: "   ",
+		});
+		expect(g6.statusCode).toBe(400);
+
+		// wrong.csv 含 essay 行（answer 列=参考文本 JSON 编码、wrong_answer=用户作答）
+		essayGradeRaw = '{"isCorrect":true,"feedback":"ok"}'; // 恢复默认
+		const wcsv = await app.inject({ method: "GET", url: "/api/export/wrong.csv" });
+		expect(wcsv.body).toContain("essay");
+		expect(wcsv.body).toContain('"SYN, SYN-ACK, ACK"'); // answer 列（JSON 编码）
+		expect(wcsv.body).toContain('"SYN 然后直接 ACK"'); // wrong_answer（用户作答）
+
+		// questions.csv 含 essay 行（options 空、answer 参考文本 JSON 编码）
+		const qcsv = await app.inject({
+			method: "GET",
+			url: `/api/export/${nbId}/questions.csv`,
+		});
+		expect(qcsv.body).toContain("essay,简述 TCP 三次握手");
+		expect(qcsv.body).toContain('"SYN, SYN-ACK, ACK"');
 	});
 });

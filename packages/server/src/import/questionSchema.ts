@@ -14,10 +14,10 @@ const baseFields = {
 /** 单条草稿的 schema：先按结构解析，再按题型校验 answer 合法性 */
 export const questionDraftSchema = z
   .object({
-    type: z.enum(['single', 'multiple', 'boolean']),
+    type: z.enum(['single', 'multiple', 'boolean', 'essay']),
     ...baseFields,
     // answer 用 union 承接三种形态，交由 superRefine 按 type 收紧
-    answer: z.union([z.number(), z.array(z.number()), z.boolean()]),
+    answer: z.union([z.number(), z.array(z.number()), z.boolean(), z.string()]),
   })
   .superRefine((q, ctx) => {
     if (q.type === 'single') {
@@ -35,6 +35,10 @@ export const questionDraftSchema = z
     } else if (q.type === 'boolean') {
       if (typeof q.answer !== 'boolean') {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'boolean 题 answer 必须是布尔值' });
+      }
+    } else if (q.type === 'essay') {
+      if (typeof q.answer !== 'string' || q.answer.trim() === '') {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'essay 题 answer 必须是非空参考答案文本' });
       }
     }
   });

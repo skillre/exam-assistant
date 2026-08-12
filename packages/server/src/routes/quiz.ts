@@ -20,6 +20,30 @@ import { gradeQuestion } from "../grading/grade.js";
 import { checkMasteryAfterGrade } from "../services/masteryService.js";
 import { toCsv } from "../export/csv.js";
 import { snapshotRepo } from "../repositories/snapshotRepo.js";
+import type { AiService } from "../ai/AiService.js";
+import { ESSAY_GRADING_SYSTEM } from "../ai/essayGradingPrompts.js";
+import { essayGradingSchema } from "../import/essayGradingSchema.js";
+
+// 主观题 AI 评分超时（毫秒）：LLM 挂起时不让 grade 无限等，降级为 5xx 可重试。
+const ESSAY_GRADING_TIMEOUT_MS = 30_000;
+
+// 第五批：主观题 AI 判分。AI 输出经 zod 校验，失败/超时一律抛错→grade 端点 5xx 且不落库。
+async function gradeEssayWithAi(
+	ai: Pick<AiService, "runOnce">,
+	question: Question,
+	userAnswer: string,
+): Promise<{ isCorrect: boolean; feedback: string }> {
+	const prompt = `题目：${question.stem}
+参考答案：${typeof question.answer === "string" ? question.answer : ""}
+评分要点：${question.explanation ?? ""}
+考生答案：${userAnswer}`;
+	const raw = await ai.runOnce(ESSAY_GRADING_SYSTEM, prompt, ESSAY_GRADING_TIMEOUT_MS);
+	const parsed = essayGradingSchema.safeParse(JSON.parse(raw));
+	if (!parsed.success) {
+		throw new Error("AI 评分输出非法：" + parsed.error.issues.map((i) => i.message).join(";"));
+	}
+	return parsed.data;
+}
 
 // v2：按练习范围解析题目集（未做/错过/题型/标签），可乱序。
 function resolveScopeQuestions(scope: PracticeScope): Question[] {
@@ -70,7 +94,10 @@ function shuffle<T>(arr: T[]): void {
 
 // Phase 4：刷题闭环。判分纯程序、确定性（DEC-3），每次作答落 attempt。
 
-export function registerQuizRoutes(app: FastifyInstance): void {
+export function registerQuizRoutes(
+	app: FastifyInstance,
+	ai?: Pick<AiService, "runOnce">,
+): void {
 	// 题库列表
 	app.get("/api/banks", async () => bankRepo.list());
 
@@ -93,6 +120,34 @@ export function registerQuizRoutes(app: FastifyInstance): void {
 		}
 		const question = questionRepo.get(questionId);
 		if (!question) return reply.code(404).send({ error: "题目不存在" });
+
+		// 第五批：essay 走 AI 评分（异步），客观题保持原有同步规则判分（契约不变）
+		if (question.type === "essay") {
+			if (typeof userAnswer !== "string" || userAnswer.trim() === "") {
+				return reply.code(400).send({ error: "essay 题答案不能为空" });
+			}
+			if (!ai) {
+				return reply.code(503).send({ error: "AI 未配置，无法批改主观题" });
+			}
+			let graded: { isCorrect: boolean; feedback: string };
+			try {
+				graded = await gradeEssayWithAi(ai, question, userAnswer);
+			} catch (err) {
+				// AI 失败/超时/输出非法：5xx 且不落库（前端可重试，不污染错题本）
+				return reply.code(502).send({
+					error: `主观题批改失败：${err instanceof Error ? err.message : "未知错误"}`,
+				});
+			}
+			const attemptId = attemptRepo.record(questionId, userAnswer, graded.isCorrect);
+			const mastered = checkMasteryAfterGrade(questionId, graded.isCorrect);
+			return {
+				attemptId,
+				isCorrect: graded.isCorrect,
+				correctAnswer: question.answer,
+				feedback: graded.feedback,
+				...(mastered ? { mastered: true } : {}),
+			};
+		}
 
 		const isCorrect = gradeQuestion(question, userAnswer);
 		const attemptId = attemptRepo.record(questionId, userAnswer, isCorrect);

@@ -42,6 +42,15 @@ function flatRowToRaw(row: FlatRow): unknown {
     answer = splitPipe(answerRaw).map((n) => Number(n));
   } else if (type === 'boolean') {
     answer = answerRaw.toLowerCase() === 'true' || answerRaw === '正确';
+  } else if (type === 'essay') {
+    // 主观题：answer 列=参考答案文本。兼容导出再导入（导出 answer 列是 JSON 编码
+    // 字符串如 "参考文本"），剥掉 JSON 引号；解析失败按裸文本处理。
+    try {
+      const parsed = JSON.parse(answerRaw);
+      answer = typeof parsed === 'string' ? parsed : answerRaw;
+    } catch {
+      answer = answerRaw;
+    }
   }
 
   return {

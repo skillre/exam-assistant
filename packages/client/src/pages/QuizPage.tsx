@@ -157,13 +157,18 @@ export function QuizPage({
 	const current = questions[idx];
 	const graded = current ? gradedById[current.id] : undefined;
 
+	// 第五批：essay AI 评分期间置 grading（按钮 loading），失败保留输入可重试
+	const [grading, setGrading] = useState(false);
 	async function onGrade(answer: Question["answer"]) {
 		if (!current) return;
+		setGrading(true);
 		try {
 			const r = await api.grade({ questionId: current.id, userAnswer: answer });
 			setGradedById((m) => ({ ...m, [current.id]: r }));
 		} catch (e) {
 			setError((e as Error).message);
+		} finally {
+			setGrading(false);
 		}
 	}
 
@@ -370,6 +375,7 @@ export function QuizPage({
 						question={current}
 						graded={graded}
 						onSubmit={onGrade}
+						pending={grading}
 					/>
 					{graded && (
 						<TutorPanel questionId={current.id} attemptId={graded.attemptId} />
