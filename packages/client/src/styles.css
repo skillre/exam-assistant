@@ -276,6 +276,14 @@ textarea::placeholder {
 	outline-offset: 2px;
 }
 
+/* 第六批审计实测：JS focus()（QuestionCard 方向键/空格、QuestionNav 跳题）不触发
+   :focus-visible，键盘用户会看不到焦点环——对程序化聚焦元素显式补 :focus 兜底 */
+.option:focus,
+.qnav-cell:focus {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
 label {
 	display: block;
 	margin: 12px 0 6px;
