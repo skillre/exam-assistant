@@ -47,6 +47,28 @@
 
 - /tmp/exam-ui-new/01~08.png（六页 + 练习中 + 判分后）——已随本批归档
 
+## 审计否决项补齐（第 1 轮，2026-08-13 复测）
+
+### 1. 截图落盘（契约⑤）
+`specs/verification/screenshots/` 下 10 张：第六批-01~08（六页+练习中+判分后）、-09-select-expanded（原生 select 展开态浅色）、-10-focus-ring（焦点环）。
+
+### 2. 浏览器实测补齐链路（远程 127.0.0.1:8080 + 本地 dev 双环境）
+| 链路 | 证据 |
+|---|---|
+| 练习全流程（选库→答题→判分→讲解→finish） | 判分 wrong + 讲解面板（解析+tutor）+ 成绩单 0%（score-num）+ 查看错题/再练一套按钮——浏览器实测 |
+| CSV 导出 | 题库页点「导出 CSV」→ network 监听 `/api/export/.../questions.csv` 200 |
+| 历史重练/继续 | 历史页「已完成」徽章 + 重练/详情 btn ghost → 点重练跳 #/quiz |
+| 学情下钻 | 薄弱点「数学」bar-label.clickable → 跳 #/quiz 带 tag 筛选 |
+| 导入拖拽 over 态 | dragenter/dragover → className "dropzone over" + CSS 规则生效（transition 禁用验证 bg=#f0fdf4/border=#15803D；webbridge evaluate 间 rAF 暂停致过渡卡起点，真实浏览器平滑） |
+| 键盘 focus-visible | **实测抓出真实缺陷**：programmatic focus 不触发 :focus-visible → 修复 6ba5790（.option:focus/.qnav-cell:focus 兜底）→ 截图确认绿环可见（vision-scout 复核） |
+| essay AI 评分 UI | 本地 dev：textarea 输入→提交→无 key 502 降级（错误提示+输入保留可重试） |
+| 原生 select 展开态浅色 | 设置页模型下拉展开截图（第六批-09） |
+
+### 3. 证据类型标注（审计要求）
+- 浏览器实测：练习全流程/导出/重练/下钻/拖拽/焦点环截图/essay UI/select 展开
+- 代码核查：focus-visible 规则与 tabIndex、导出 downloadCsv 链路（client.ts 未动）
+- diff 证明：组件逻辑零改动（100 测试 + smoke 51 + git diff 仅 className）
+
 ## 测试副作用说明（如实记录）
 
 浏览器实测"标记已掌握→显示已掌握→取消掌握"回归链路时，还原操作将错题本原有 2 条已掌握软标记一并取消（wrong_book_state.is_mastered 复位，mastered_at 置空无法区分原始条目）。当前远程错题 6 道、已掌握 0 条。该软标记仅影响错题本展示，不影响掌握度/学情/练习数据；如需恢复请人工重新标记（用户知晓）。
