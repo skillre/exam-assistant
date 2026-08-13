@@ -229,4 +229,8 @@
   - 六页交互实测（webbridge，**评审 #2 补全 4 条链路**）：① 切 tab 六页 ② 选库开始练习→答题→判分→讲解→finish ③ 导出 CSV 下载 ④ 历史重练/继续 ⑤ 学情下钻 ⑥ **错题本「标记已掌握」切换前后状态样式（WrongBookPage:214 btn↔btn ghost）** ⑦ **导入拖拽（ImportPanel dropzone over 态）** ⑧ **设置页切换模型（SettingsPage selectModel 链）** ⑨ **键盘操作 focus 可见性（QuestionCard 方向键/空格，第三批交付，focus-visible 样式核查）**
   - 对比度抽查：正文/次要文字/按钮文字均 WCAG AA（4.5:1）
 - **范围红线**：零新依赖（无图标库/字体库/组件库，图标用内联字符或现有方式）；JSX 结构/逻辑/事件零改动；API/schema/DB 零改动；AI prompt 零改动；安全/备份/部署架构不动；不做深色模式切换（单浅色主题）；不做响应式重构。
-- **状态**：已确认（2026-08-13，用户确认 v2）
+- **状态**：已完成（2026-08-13）
+  - 本地：typecheck 0、100 测试全绿、smoke 51 断言、className 双向断言 45 类全覆盖（补 .panel 孤儿类）
+  - 浏览器实测：六页浅色无残留、计算样式全契约命中（#FAFAF9/#15803D/1100px/胶囊导航/操作列 ghost/color-scheme light）、vision-scout 复核"比深色版更现代干净"
+  - 回归 11 链路实测通过（含标记已掌握切换/键盘 focus/设置页）
+  - 组件改动：HistoryPage 3 处 + InsightsPage 2 处 className（btn→btn ghost），功能零改动
