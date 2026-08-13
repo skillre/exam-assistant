@@ -12,7 +12,7 @@
 	--border: #e4e4e7;
 	--border-strong: #d4d4d8;
 	--text: #18181b;
-	--muted: #71717a;
+	--muted: #6d6d76; /* 审计 R3：on surface-2 #F4F4F5 对比度 4.66:1 ≥ 4.5:1（原 #71717A 仅 4.39:1） */
 
 	/* 品牌：森林绿（唯一 accent） */
 	--accent: #15803d;

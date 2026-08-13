@@ -64,7 +64,23 @@
 | essay AI 评分 UI | 本地 dev：textarea 输入→提交→无 key 502 降级（错误提示+输入保留可重试） |
 | 原生 select 浅色 | 第六批-09-select-element.png（select 元素特写：bg 白/文字 off-black/hairline 边框/10px 圆角）+ `color-scheme: light` computed 断言。**说明（审计 R2 修正）**：macOS Chrome 的原生 select popup 由 OS 层渲染（独立窗口），CDP 截图无法捕获（实测 MD5 与关闭态一致、无 pickerLayer DOM）；浅色渲染由 color-scheme: light 声明保证（深色 OS 下强制控件浅色） |
 
-### 3. 审计 R2 修复：weak-* 孤儿规则清理 + 双向检查
+### 3. 审计 R3 修复：对比度实测记录 + --muted 暗化
+
+实测对比度（WCAG AA 公式，审计独立复算一致）：
+
+| 组合 | 比值 | 达标 |
+|---|---|---|
+| 正文 #18181B on 白 #FFFFFF | 16.96:1 | ✅ |
+| muted #71717A on 白 | 4.83:1 | ✅ |
+| accent #15803D on 白 | 5.02:1 | ✅ |
+| 玫瑰红 #E11D48 on 白 | 4.70:1 | ✅ |
+| muted #71717A on surface-2 #F4F4F5 | 4.39:1 | ❌ 审计 R3 |
+| **muted 修正 #6D6D76 on surface-2** | **4.66:1** | ✅ 修复 |
+| muted 修正 #6D6D76 on 白 | 5.12:1 | ✅ |
+
+修复：`--muted: #71717A → #6D6D76`（46d0ac6 后新提交），活用于 .history-table th / .badge 等 muted-on-surface-2 组合，全部 ≥4.5:1；typecheck 0 / 100 测试 / smoke 51 复跑全绿。
+
+### 4. 审计 R2 修复：weak-* 孤儿规则清理 + 双向检查
 - styles.css 原含 `.weak-row/.weak-label/.weak-track/.weak-fill/.weak-val`（学情薄弱点条，组件实际用 bar-row 系列）——已删除（604-640 行）
 - 双向检查脚本与输出：
 ```
