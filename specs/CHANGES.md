@@ -229,4 +229,4 @@
   - 六页交互实测（webbridge，**评审 #2 补全 4 条链路**）：① 切 tab 六页 ② 选库开始练习→答题→判分→讲解→finish ③ 导出 CSV 下载 ④ 历史重练/继续 ⑤ 学情下钻 ⑥ **错题本「标记已掌握」切换前后状态样式（WrongBookPage:214 btn↔btn ghost）** ⑦ **导入拖拽（ImportPanel dropzone over 态）** ⑧ **设置页切换模型（SettingsPage selectModel 链）** ⑨ **键盘操作 focus 可见性（QuestionCard 方向键/空格，第三批交付，focus-visible 样式核查）**
   - 对比度抽查：正文/次要文字/按钮文字均 WCAG AA（4.5:1）
 - **范围红线**：零新依赖（无图标库/字体库/组件库，图标用内联字符或现有方式）；JSX 结构/逻辑/事件零改动；API/schema/DB 零改动；AI prompt 零改动；安全/备份/部署架构不动；不做深色模式切换（单浅色主题）；不做响应式重构。
-- **状态**：待确认（v2，评审 2 blocker 清零 + 5 concern 全部采纳）
+- **状态**：已确认（2026-08-13，用户确认 v2）
