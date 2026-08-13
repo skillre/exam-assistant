@@ -202,3 +202,24 @@
   - 过程中修复既有 bug：attemptRepo.latestWithAnswers 同毫秒排序不稳（加 rowid DESC，第四批同款问题）
   - 迁移机制：better-sqlite3 默认 DEFENSIVE 禁改 sqlite_master → unsafeMode 独立连接 + writable_schema 改写（幂等/备份/回滚），远程存量库验证生效
   - 远程：已部署 healthy；essay 真实 AI 评分对/错 + feedback 均正确；wrong.csv/questions.csv essay 行转义正确
+
+## 2026-08-13 第六批：UI 视觉重做——浅色纸感设计系统（级别：M~L，Change Gate）
+- **现状**：全站深色主题（bg #0f1115 / 蓝 #4f8cff），视觉审查（vision-scout 六页截图）与代码诊断结论：① 主色滥用（历史页 7 行×2=14 个主色按钮、学情页 3 连主色按钮，无主/次/幽灵层级）；② 内容密度失衡（多页底部大片留白，宽屏 900px 窄栏空洞）；③ 层级感缺失（卡片无阴影/无主次、表格无行分隔线）；④ 色彩不协调（删除红饱和度过高、学情条形图红蓝冲突）；⑤ 细节基线不对齐、次要按钮对比度不足。用户定性：显示效果差、AI 味道浓（深色等）。
+- **目标**（用户确认 2026-08-13，提案 v2）：**浅色纸感设计系统 + 单 accent 森林绿**，布局方案 A（顶部悬浮白色胶囊导航 + 内容区 900→1100px）。
+- **改动点**：
+  - `packages/client/src/styles.css` **全量重写**（约 257→450 行）：设计 token 重构（暖白纸感背景 #FAFAF9 / 纯白卡片 / hairline #E4E4E7 / off-black 文字 / 森林绿 accent #15803D / 玫瑰红错误 #E11D48 / 琥珀警示）；Double-Bezel 卡片（hairline+淡 tinted 阴影+14px 圆角）；按钮三级体系（primary 绿实心/次要白底 hairline/ghost 透明，active:scale 按压感）；表格 hairline 行分隔+hover；input focus ring 绿色；徽章 pill 化；自定义 cubic-bezier 过渡；prefers-reduced-motion 降级；.history-table（第四批遗留无样式类）补齐；.essay-input 重设
+  - 组件 className 微调（**仅样式类，零逻辑/结构改动**）：App.tsx topbar/tabs → 悬浮胶囊导航类；HistoryPage 操作列主色按钮 → ghost 次级；BanksPage/WrongBookPage 删除按钮 → danger ghost（hover 显红）；学情页三连按钮 → 1 主 2 次；InsightsPanel 条形图红 → 品牌色系
+  - 全站 className 盘点（静态 35 + 动态 4：app/bad/badge/bar-*/brand/btn/card/content/danger/error/essay-input/field/ghost/history-table/input/list-item/md/muted/ok/panel/qnav/report/row/score-*/spacer/tabs/topbar/tutor + clickable/over/disabled）——新 CSS 全覆盖，无遗漏类
+- **影响面**：全站共用 styles.css（所有页面/组件视觉层）；className 改动涉及 App/HistoryPage/BanksPage/WrongBookPage/InsightsPage 五文件样式类；**功能逻辑、JSX 结构、API、数据流零改动**。风险点：① 个别 class 未覆盖导致样式丢失（用盘点清单+浏览器实测兜底）；② 对比度/可读性（浅色下 WCAG AA 校验）；③ 动效过度（克制，reduced-motion 降级）。
+- **目标验收**（每条可执行）：
+  - `pnpm typecheck` 0 错误；`pnpm test` 100 用例全绿不降；`pnpm --filter @exam/server smoke` 51 断言不降
+  - `git diff` 确认：仅 packages/client/src/ 下 styles.css + 5 个组件文件，无 package.json/lock/schema/API/部署文件改动
+  - 浏览器实测（本地映射 127.0.0.1:8080，kimi-webbridge 截图落盘 specs/verification/）：六页（刷题/题库/错题本/学情/历史/设置）截图确认——浅色主题生效、无深色残留、无横向溢出、无样式丢失
+  - 计算样式抽查：body 背景 = #FAFAF9 系、主按钮 = #15803D 系、.content 宽度 ≥1100px、历史页操作按钮非主色实心
+- **回归验收**（旧功能未坏，逐条可执行）：
+  - 六页交互实测（webbridge）：切 tab、选库开始练习→答题→判分→讲解、导出 CSV 下载、历史重练/继续、学情下钻——功能行为与重做前一致
+  - 100 测试 + smoke 51 全绿（功能层零改动证明）
+  - `git diff --stat` 确认改动面 = 6 文件以内（styles.css + 5 组件），组件 diff 仅 className 字符串
+  - 对比度抽查：正文/次要文字/按钮文字均 WCAG AA（4.5:1）
+- **范围红线**：零新依赖（无图标库/字体库/组件库，图标用内联字符或现有方式）；JSX 结构/逻辑/事件零改动；API/schema/DB 零改动；AI prompt 零改动；安全/备份/部署架构不动；不做深色模式切换（单浅色主题）；不做响应式重构（保持现有简单响应式）。
+- **状态**：待确认
