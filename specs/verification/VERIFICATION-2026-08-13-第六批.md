@@ -62,9 +62,19 @@
 | 导入拖拽 over 态 | dragenter/dragover → className "dropzone over" + CSS 规则生效（transition 禁用验证 bg=#f0fdf4/border=#15803D；webbridge evaluate 间 rAF 暂停致过渡卡起点，真实浏览器平滑） |
 | 键盘 focus-visible | **实测抓出真实缺陷**：programmatic focus 不触发 :focus-visible → 修复 6ba5790（.option:focus/.qnav-cell:focus 兜底）→ 截图确认绿环可见（vision-scout 复核） |
 | essay AI 评分 UI | 本地 dev：textarea 输入→提交→无 key 502 降级（错误提示+输入保留可重试） |
-| 原生 select 展开态浅色 | 设置页模型下拉展开截图（第六批-09） |
+| 原生 select 浅色 | 第六批-09-select-element.png（select 元素特写：bg 白/文字 off-black/hairline 边框/10px 圆角）+ `color-scheme: light` computed 断言。**说明（审计 R2 修正）**：macOS Chrome 的原生 select popup 由 OS 层渲染（独立窗口），CDP 截图无法捕获（实测 MD5 与关闭态一致、无 pickerLayer DOM）；浅色渲染由 color-scheme: light 声明保证（深色 OS 下强制控件浅色） |
 
-### 3. 证据类型标注（审计要求）
+### 3. 审计 R2 修复：weak-* 孤儿规则清理 + 双向检查
+- styles.css 原含 `.weak-row/.weak-label/.weak-track/.weak-fill/.weak-val`（学情薄弱点条，组件实际用 bar-row 系列）——已删除（604-640 行）
+- 双向检查脚本与输出：
+```
+在用类 45 个（app/bad/badge/bar-*/brand/btn/card/clickable/content/correct/current/danger/disabled/dropzone/error/essay-input/field/ghost/history-table/input/list-item/md/muted/ok/option/over/panel/qnav/qnav-cell/report/row/score-*/selected/spacer/tab/tabs/topbar/tutor/wrong/active）
+正向（在用类都有选择器）: PASS ✓
+反向（无孤儿定义）: PASS ✓
+```
+- typecheck 0 / 100 测试 / smoke 51 复跑全绿
+
+### 4. 证据类型标注（审计要求）
 - 浏览器实测：练习全流程/导出/重练/下钻/拖拽/焦点环截图/essay UI/select 展开
 - 代码核查：focus-visible 规则与 tabIndex、导出 downloadCsv 链路（client.ts 未动）
 - diff 证明：组件逻辑零改动（100 测试 + smoke 51 + git diff 仅 className）
