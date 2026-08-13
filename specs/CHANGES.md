@@ -168,6 +168,7 @@
   - 远程：已部署 healthy；零新增依赖（nanoid 删除）、schema/docker 零改动
 
 ## 2026-08-12 第五批：主观题 + AI 评分（级别：M~L，Change Gate 独立立项，v2 修订）
+
 - **现状**：题型仅 `single | multiple | boolean`；`AnswerValue = number | number[] | boolean` 无字符串；判分纯规则同步（grading/grade.ts，DEC-3 客观题不经 AI）；/api/quiz/grade 毫秒级返回；主观题在第二批 FRD Non-Goals 中被明确推迟，本批正式立项。
 - **目标**：新增第四种题型 `essay`（主观题/简答），AI 评分 + 批改意见，全链路打通（导入→刷题→判分→错题本→掌握→学情→历史→导出）。
 - **用户三问确认（2026-08-12）**：
@@ -203,23 +204,29 @@
   - 迁移机制：better-sqlite3 默认 DEFENSIVE 禁改 sqlite_master → unsafeMode 独立连接 + writable_schema 改写（幂等/备份/回滚），远程存量库验证生效
   - 远程：已部署 healthy；essay 真实 AI 评分对/错 + feedback 均正确；wrong.csv/questions.csv essay 行转义正确
 
-## 2026-08-13 第六批：UI 视觉重做——浅色纸感设计系统（级别：M~L，Change Gate）
+## 2026-08-13 第六批：UI 视觉重做——浅色纸感设计系统（级别：M~L，Change Gate，v2 修订）
 - **现状**：全站深色主题（bg #0f1115 / 蓝 #4f8cff），视觉审查（vision-scout 六页截图）与代码诊断结论：① 主色滥用（历史页 7 行×2=14 个主色按钮、学情页 3 连主色按钮，无主/次/幽灵层级）；② 内容密度失衡（多页底部大片留白，宽屏 900px 窄栏空洞）；③ 层级感缺失（卡片无阴影/无主次、表格无行分隔线）；④ 色彩不协调（删除红饱和度过高、学情条形图红蓝冲突）；⑤ 细节基线不对齐、次要按钮对比度不足。用户定性：显示效果差、AI 味道浓（深色等）。
 - **目标**（用户确认 2026-08-13，提案 v2）：**浅色纸感设计系统 + 单 accent 森林绿**，布局方案 A（顶部悬浮白色胶囊导航 + 内容区 900→1100px）。
 - **改动点**：
-  - `packages/client/src/styles.css` **全量重写**（约 257→450 行）：设计 token 重构（暖白纸感背景 #FAFAF9 / 纯白卡片 / hairline #E4E4E7 / off-black 文字 / 森林绿 accent #15803D / 玫瑰红错误 #E11D48 / 琥珀警示）；Double-Bezel 卡片（hairline+淡 tinted 阴影+14px 圆角）；按钮三级体系（primary 绿实心/次要白底 hairline/ghost 透明，active:scale 按压感）；表格 hairline 行分隔+hover；input focus ring 绿色；徽章 pill 化；自定义 cubic-bezier 过渡；prefers-reduced-motion 降级；.history-table（第四批遗留无样式类）补齐；.essay-input 重设
-  - 组件 className 微调（**仅样式类，零逻辑/结构改动**）：App.tsx topbar/tabs → 悬浮胶囊导航类；HistoryPage 操作列主色按钮 → ghost 次级；BanksPage/WrongBookPage 删除按钮 → danger ghost（hover 显红）；学情页三连按钮 → 1 主 2 次；InsightsPanel 条形图红 → 品牌色系
-  - 全站 className 盘点（静态 35 + 动态 4：app/bad/badge/bar-*/brand/btn/card/content/danger/error/essay-input/field/ghost/history-table/input/list-item/md/muted/ok/panel/qnav/report/row/score-*/spacer/tabs/topbar/tutor + clickable/over/disabled）——新 CSS 全覆盖，无遗漏类
-- **影响面**：全站共用 styles.css（所有页面/组件视觉层）；className 改动涉及 App/HistoryPage/BanksPage/WrongBookPage/InsightsPage 五文件样式类；**功能逻辑、JSX 结构、API、数据流零改动**。风险点：① 个别 class 未覆盖导致样式丢失（用盘点清单+浏览器实测兜底）；② 对比度/可读性（浅色下 WCAG AA 校验）；③ 动效过度（克制，reduced-motion 降级）。
+  - `packages/client/src/styles.css` **全量重写**（约 257→450 行）：设计 token（暖白纸感 #FAFAF9 / 纯白卡片 / hairline #E4E4E7 / off-black #18181B / muted #71717A / 森林绿 accent #15803D / 玫瑰红错误 #E11D48 / 警示暗琥珀 #A16207 仅作背景色配深色前景——评审 #7，白底文字对比 ≥4.5:1）；**`color-scheme: light` 声明（评审 #5：深色 OS 下原生 select/checkbox/滚动条不残留深色）**；Double-Bezel 卡片（hairline+淡 tinted 阴影+14px 圆角）；按钮三级（primary 绿/次要白底 hairline/ghost，active:scale 按压感）；表格 hairline 行分隔+hover；input focus ring 绿；徽章 pill；自定义 cubic-bezier 过渡 + prefers-reduced-motion 降级；**`color-scheme: light` + 表单控件显式配色**；补 .history-table（第四批在用但无定义）、.essay-input（第五批）
+  - 组件 className 微调（**仅样式类，零逻辑/结构改动，共 5 文件**）：App.tsx topbar/tabs 悬浮胶囊类；HistoryPage 操作列主色按钮 → ghost 次级；BanksPage 删除按钮（两处 btn danger，WrongBookPage 无删除按钮——评审 #4）→ danger ghost；学情页三连按钮 → 1 主 2 次；**InsightsPanel 条形图改色仅 CSS 层（重定义 .bar-fill.bad background token，组件零改动——评审 #3，保持 6 文件红线）**
+  - **全站在用 className 实扫清单（评审 #1 重建，新 CSS 必须全覆盖，用脚本断言核对）**：
+    - 静态 33：app/bad/badge/bar-fill/bar-label/bar-row/bar-track/bar-val/brand/btn/card/content/danger/error/essay-input/field/ghost/history-table/input/list-item/md/muted/ok/panel/qnav/report/row/score-big/score-num/spacer/tabs/topbar/tutor
+    - 表达式类 4：tab（App.tsx:41 激活态 tab active）/option（QuestionCard 三态 option selected/correct/wrong）/dropzone（ImportPanel 拖拽区 over/disabled）/qnav-cell（QuestionNav current/correct/wrong）
+    - 状态类：selected/correct/wrong/current/active/clickable/over/disabled
+    - **验收脚本断言：grep 双向核对——每个在用类名在新 styles.css 有对应选择器，反向无孤儿定义（评审 #1）**
+- **影响面**：全站共用 styles.css；className 改动涉及 App/HistoryPage/BanksPage/InsightsPage 四文件（样式类）；**功能逻辑、JSX 结构、API、数据流零改动**（全 src 无硬编码 hex inline style，深色残留风险仅 CSS 层）。风险点：① 个别 class 未覆盖（盘点清单+脚本断言+浏览器实测兜底）；② 对比度（WCAG AA 校验）；③ 动效过度（克制+reduced-motion）；④ 深色 OS 原生控件（color-scheme 声明兜底）。
 - **目标验收**（每条可执行）：
   - `pnpm typecheck` 0 错误；`pnpm test` 100 用例全绿不降；`pnpm --filter @exam/server smoke` 51 断言不降
-  - `git diff` 确认：仅 packages/client/src/ 下 styles.css + 5 个组件文件，无 package.json/lock/schema/API/部署文件改动
-  - 浏览器实测（本地映射 127.0.0.1:8080，kimi-webbridge 截图落盘 specs/verification/）：六页（刷题/题库/错题本/学情/历史/设置）截图确认——浅色主题生效、无深色残留、无横向溢出、无样式丢失
-  - 计算样式抽查：body 背景 = #FAFAF9 系、主按钮 = #15803D 系、.content 宽度 ≥1100px、历史页操作按钮非主色实心
+  - `git diff --stat` 确认：仅 styles.css + App/HistoryPage/BanksPage/InsightsPage 共 5 文件（InsightsPanel 零改动），无 package.json/lock/schema/API/部署文件
+  - **className 覆盖脚本断言**：双向 grep（在用类都有选择器、无孤儿定义）
+  - 浏览器实测（kimi-webbridge 已在本会话验证可用——截图/点击/填表正常；本地映射 127.0.0.1:8080）：六页截图落盘 specs/verification/，浅色主题生效、无深色残留（含原生 select/checkbox 展开态——评审 #5）、无横向溢出、无样式丢失
+  - 计算样式抽查（getComputedStyle）：body 背景 #FAFAF9 系、主按钮 #15803D 系、.content max-width ≥1100px、历史页操作按钮非主色实心；对比度抽查正文/次要/按钮文字 ≥4.5:1
+  - **reduced-motion 核查（评审 #8）：模拟 prefers-reduced-motion 下断言过渡/动画被禁用（代码核查或 CSS 断言）**
 - **回归验收**（旧功能未坏，逐条可执行）：
-  - 六页交互实测（webbridge）：切 tab、选库开始练习→答题→判分→讲解、导出 CSV 下载、历史重练/继续、学情下钻——功能行为与重做前一致
   - 100 测试 + smoke 51 全绿（功能层零改动证明）
-  - `git diff --stat` 确认改动面 = 6 文件以内（styles.css + 5 组件），组件 diff 仅 className 字符串
+  - `git diff --stat` 组件 diff 仅 className 字符串
+  - 六页交互实测（webbridge，**评审 #2 补全 4 条链路**）：① 切 tab 六页 ② 选库开始练习→答题→判分→讲解→finish ③ 导出 CSV 下载 ④ 历史重练/继续 ⑤ 学情下钻 ⑥ **错题本「标记已掌握」切换前后状态样式（WrongBookPage:214 btn↔btn ghost）** ⑦ **导入拖拽（ImportPanel dropzone over 态）** ⑧ **设置页切换模型（SettingsPage selectModel 链）** ⑨ **键盘操作 focus 可见性（QuestionCard 方向键/空格，第三批交付，focus-visible 样式核查）**
   - 对比度抽查：正文/次要文字/按钮文字均 WCAG AA（4.5:1）
-- **范围红线**：零新依赖（无图标库/字体库/组件库，图标用内联字符或现有方式）；JSX 结构/逻辑/事件零改动；API/schema/DB 零改动；AI prompt 零改动；安全/备份/部署架构不动；不做深色模式切换（单浅色主题）；不做响应式重构（保持现有简单响应式）。
-- **状态**：待确认
+- **范围红线**：零新依赖（无图标库/字体库/组件库，图标用内联字符或现有方式）；JSX 结构/逻辑/事件零改动；API/schema/DB 零改动；AI prompt 零改动；安全/备份/部署架构不动；不做深色模式切换（单浅色主题）；不做响应式重构。
+- **状态**：待确认（v2，评审 2 blocker 清零 + 5 concern 全部采纳）
