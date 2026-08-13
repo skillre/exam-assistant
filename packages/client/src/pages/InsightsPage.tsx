@@ -176,14 +176,14 @@ export function InsightsPage({
 					{running ? "生成中…" : "AI 报告"}
 				</button>
 				<button
-					className="btn"
+					className="btn ghost"
 					onClick={runDiagnosis}
 					disabled={diagnosisRunning || !hasData}
 				>
 					{diagnosisRunning ? "诊断中…" : "错因诊断"}
 				</button>
 				<button
-					className="btn"
+					className="btn ghost"
 					onClick={runPlan}
 					disabled={planRunning || !hasData}
 				>

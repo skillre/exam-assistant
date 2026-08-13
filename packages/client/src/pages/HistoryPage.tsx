@@ -117,15 +117,15 @@ export function HistoryPage({ onDrillQuiz, onResumeSession }: Props) {
 									</td>
 									<td>
 										{it.completed || isStaticScope(it) ? (
-											<button className="btn" onClick={() => redo(it)}>
+											<button className="btn ghost" onClick={() => redo(it)}>
 												{it.completed ? "重练" : "重开"}
 											</button>
 										) : (
-											<button className="btn" onClick={() => resume(it)}>
+											<button className="btn ghost" onClick={() => resume(it)}>
 												继续
 											</button>
 										)}
-										<button className="btn" onClick={() => openDetail(it.id)}>
+										<button className="btn ghost" onClick={() => openDetail(it.id)}>
 											{detailId === it.id ? "收起" : "详情"}
 										</button>
 									</td>
