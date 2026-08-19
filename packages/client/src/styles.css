@@ -26,6 +26,7 @@
 	--bad: #e11d48; /* 错 = 玫瑰红（降饱和） */
 	--bad-soft: #fff1f2;
 	--warn: #a16207; /* 警示暗琥珀（仅作背景配深色前景） */
+	--warn-soft: #fefce8;
 
 	/* 形状与阴影 */
 	--radius: 14px;
@@ -310,6 +311,13 @@ label {
 }
 .ok {
 	color: var(--ok);
+}
+/* 导入提示：跳过行等非致命警告（琥珀前景 + 淡琥珀底） */
+.card.warn {
+	border-color: rgba(161, 98, 7, 0.4);
+	background: var(--warn-soft);
+	color: var(--text);
+	font-size: 13px;
 }
 
 /* ── 题目选项：选中绿、判分对绿错玫瑰 ── */

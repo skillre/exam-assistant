@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { QuestionDraft } from '@exam/shared';
+import type { QuestionDraft, ImportRowError } from '@exam/shared';
 import { api } from '../api/client.js';
 import { useFlashNotice } from '../utils.js';
 import { DraftEditor } from './DraftEditor.js';
@@ -41,6 +41,7 @@ interface Props {
 export function ImportPanel({ targetBankId, targetBankName, onImported }: Props) {
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState<QuestionDraft[]>([]);
+  const [parseErrors, setParseErrors] = useState<ImportRowError[]>([]);
   const [bankName, setBankName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -61,6 +62,7 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
     setLoading(true);
     setError('');
     flash('');
+    setParseErrors([]);
     try {
       const r = await api.parseText(text);
       setDrafts(r.questions);
@@ -77,9 +79,11 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
     setError('');
     flash('');
     setDrafts([]);
+    setParseErrors([]);
     try {
       const r = await api.parseFile(file);
       setDrafts(r.questions);
+      setParseErrors(r.errors ?? []);
       if (r.questions.length === 0) setError('文件里没有解析出题目，换个文件或格式再试');
     } catch (e) {
       setError((e as Error).message);
@@ -110,6 +114,7 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
       );
       flash(`已导入 ${r.count} 道题${appendMode ? '到本题库' : '到新题库'}`);
       setDrafts([]);
+      setParseErrors([]);
       setText('');
       setBankName('');
       onImported?.(r.count);
@@ -120,13 +125,14 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
     }
   }
 
-  // 下载结构化导入的 CSV 模板（列约定与后端 parseFile 一致）
+  // 下载结构化导入的 CSV 模板（列约定与后端 parseFile 一致；带 BOM 方便 Excel 打开，后端可识别）
   function downloadTemplate() {
     const rows = [
       'type,stem,options,answer,explanation,tags',
       'single,地球的卫星是？,月球|火星|金星,0,月球是地球唯一天然卫星,天文',
       'multiple,以下属于编程语言的有？,Python|HTML|Java|CSS,0|2,HTML/CSS 是标记与样式,编程',
       'boolean,地球是平的。,正确|错误,false,地球是球体,常识',
+      'essay,简述 TCP 三次握手,,SYN → SYN-ACK → ACK,评分要点：三个报文段,网络',
     ].join('\n');
     const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -155,7 +161,11 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
           <li>
             <strong>直接拖个文件进来</strong>（推荐）：支持 <code>.txt / .md / .docx</code> 文档 ——
             里面就是平时的题目文字（含题干、选项、答案），AI 会自动识别成结构化题目。
-            也支持 <code>.csv / .xlsx / .json</code> 这种已排好列的表格。
+            也支持 <code>.csv / .xlsx / .json</code> 表格：第一行放表头{' '}
+            <code>type,stem,options,answer,explanation,tags</code>
+            （中文表头 题型/题干/选项/答案/解析/标签 也行），题型填{' '}
+            <code>single / multiple / boolean / essay</code>（或 单选/多选/判断/简答），
+            答案填 字母或 0 起下标（如 <code>0|2</code>、<code>A,C</code>、<code>对/错</code>）。
           </li>
           <li>
             <strong>或直接粘贴文字</strong>：把题目复制到下方框里，点“解析文本”。
@@ -240,6 +250,20 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
             入库前可逐题编辑题干、选项、答案、题型与标签，红色提示为校验未通过项。
           </p>
 
+          {parseErrors.length > 0 && (
+            <div className="card warn" style={{ marginBottom: 12 }}>
+              <strong>⚠ 有 {parseErrors.length} 行未通过校验，已跳过：</strong>
+              <ul style={{ margin: '6px 0 0', paddingLeft: 20, lineHeight: 1.7 }}>
+                {parseErrors.slice(0, 5).map((e) => (
+                  <li key={e.row}>
+                    第 {e.row} 行：{e.errors.join('；')}
+                  </li>
+                ))}
+                {parseErrors.length > 5 && <li>…还有 {parseErrors.length - 5} 行</li>}
+              </ul>
+            </div>
+          )}
+
           {drafts.map((d, i) => (
             <DraftEditor
               key={i}
@@ -271,7 +295,7 @@ export function ImportPanel({ targetBankId, targetBankName, onImported }: Props)
             <button className="btn" onClick={commit} disabled={loading || invalidCount > 0}>
               {appendMode ? '确认导入到本库' : '确认导入'}
             </button>
-            <button className="btn ghost" onClick={() => setDrafts([])} disabled={loading}>
+            <button className="btn ghost" onClick={() => { setDrafts([]); setParseErrors([]); }} disabled={loading}>
               放弃
             </button>
           </div>

@@ -91,8 +91,15 @@ export interface GradeResponse {
 export interface ParseTextRequest {
 	text: string;
 }
+/** 文件导入时被跳过的行（行号 1 起 + 原因），合法行照常返回 */
+export interface ImportRowError {
+	row: number;
+	errors: string[];
+}
 export interface ParseResult {
 	questions: QuestionDraft[];
+	/** 结构化文件解析：未通过校验被跳过的行（可空） */
+	errors?: ImportRowError[];
 }
 export interface ImportCommitRequest {
 	bankId?: string;

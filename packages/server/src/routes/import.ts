@@ -3,7 +3,7 @@ import type { ImportCommitRequest, ImportCommitResponse, ParseResult } from '@ex
 import type { AiService } from '../ai/AiService.js';
 import { parseTextWithAi } from '../import/parseWithAi.js';
 import { parseFileBuffer, extractText, isStructuredFile } from '../import/parseFile.js';
-import { validateDrafts } from '../import/questionSchema.js';
+import { validateDrafts, collectDraftIssues } from '../import/questionSchema.js';
 import { bankRepo } from '../repositories/bankRepo.js';
 import { questionRepo } from '../repositories/questionRepo.js';
 
@@ -34,8 +34,21 @@ export function registerImportRoutes(app: FastifyInstance, ai: AiService): void 
     const buf = await file.toBuffer();
     try {
       if (isStructuredFile(file.filename)) {
-        const questions = parseFileBuffer(file.filename, buf);
-        const res: ParseResult = { questions };
+        const { questions, errors } = parseFileBuffer(file.filename, buf);
+        // 合法行照常返回；坏行给出 行号+原因，供前端预览提示（不再整文件 400）
+        if (questions.length === 0) {
+          let summary = '文件里没有题目数据（空文件或只有表头？）';
+          if (errors.length > 0) {
+            const details = errors
+              .slice(0, 6)
+              .map((e) => `第 ${e.row} 行：${e.errors.join('；')}`)
+              .join('\n');
+            const more = errors.length > 6 ? `\n…还有 ${errors.length - 6} 行错误` : '';
+            summary = `没有可导入的题目（${errors.length} 行有问题）：\n${details}${more}`;
+          }
+          return reply.code(400).send({ error: summary });
+        }
+        const res: ParseResult = { questions, errors };
         return res;
       }
       const text = await extractText(file.filename, buf);
@@ -65,8 +78,15 @@ export function registerImportRoutes(app: FastifyInstance, ai: AiService): void 
     let validated;
     try {
       validated = validateDrafts(questions, questions[0]?.source ?? 'file');
-    } catch (err) {
-      return reply.code(400).send({ error: `题目校验失败：${(err as Error).message}` });
+    } catch {
+      // 逐条报错，替代整段 zod JSON
+      const bad = collectDraftIssues(questions).filter((i) => !i.ok);
+      const details = bad
+        .slice(0, 6)
+        .map((i) => `第 ${i.index + 1} 条：${i.errors.join('；')}`)
+        .join('；');
+      const more = bad.length > 6 ? `；…还有 ${bad.length - 6} 条` : '';
+      return reply.code(400).send({ error: `题目校验失败：${details}${more}` });
     }
 
     let targetBankId = bankId;
