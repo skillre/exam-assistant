@@ -1,4 +1,4 @@
-# @exam/dsh-exam · 考试助手
+# @skillre/dsh-exam · 考试助手
 
 考试助手是 [DeepSeek Harness (DSH)](https://github.com/skillre/deepseek-harness) 的原生考试练习插件。它以普通 Host Cordis 插件的形式运行在 DSH 进程内（node:sqlite 存储 + webServer 路由 + settings + llm），并通过 `dsh.client` 浏览器包提供完整交互界面。
 
@@ -14,7 +14,7 @@
 
 ```bash
 # 在 DSH 的 profile 中安装本插件包
-dsh plugin add @exam/dsh-exam
+dsh plugin add @skillre/dsh-exam
 ```
 
 插件作为 **bundle** 加入 profile 的 `dsh.profile.bundles`（参考包内 `cordis.patch.yml` 的说明），或在 profile 的 `cordis.patch.yml` 中 `insert` 插件行：
@@ -22,7 +22,7 @@ dsh plugin add @exam/dsh-exam
 ```yaml
 - insert:
     - id: dsh-exam
-      name: '@exam/dsh-exam'
+      name: '@skillre/dsh-exam'
       config:
         dataDir: .exam-data
 ```

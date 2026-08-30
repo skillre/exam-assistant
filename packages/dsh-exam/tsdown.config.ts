@@ -3,7 +3,7 @@
  *
  * 目标格式（与 DSH 官方 dsh.client 包一致，见 dsh-client-locale/lib/client.js 等）：
  *   window.__ModuleLoader__.load({
- *     id: "@exam/dsh-exam",
+ *     id: "@skillre/dsh-exam",
  *     factory: (require) => { ... CJS chunk ...; return module.exports; }
  *   });
  *
@@ -15,7 +15,7 @@
  */
 import { defineConfig } from 'tsdown';
 
-const PLUGIN_ID = '@exam/dsh-exam';
+const PLUGIN_ID = '@skillre/dsh-exam';
 
 export default defineConfig({
   entry: ['src/client/index.tsx'],

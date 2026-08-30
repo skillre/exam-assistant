@@ -8,9 +8,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "pnpm --filter @exam/dsh-exam run build",
-    "typecheck": "pnpm --filter @exam/dsh-exam run typecheck",
-    "test": "pnpm --filter @exam/dsh-exam run test"
+    "build": "pnpm --filter @skillre/dsh-exam run build",
+    "typecheck": "pnpm --filter @skillre/dsh-exam run typecheck",
+    "test": "pnpm --filter @skillre/dsh-exam run test"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

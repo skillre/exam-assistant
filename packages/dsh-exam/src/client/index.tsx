@@ -3,7 +3,7 @@
  *
  * 形态（与 DSH 生态一致，非动态 cordis_define 包）：
  * - 导出 `inject: string[]`（本包依赖的 Client Cordis 服务名）与 `apply(ctx)`；
- * - 构建产物为单文件 bundle：`window.__ModuleLoader__.load({ id: '@exam/dsh-exam', factory })`
+ * - 构建产物为单文件 bundle：`window.__ModuleLoader__.load({ id: '@skillre/dsh-exam', factory })`
  *   （tsdown banner/postBanner 包裹），工厂内 require("react") 等由 DSH web 的模块表提供。
  *
  * 注册（全部经 ctx.slots.inject + ctx.slots.register，随 fiber 卸载自动注销）：
@@ -24,11 +24,11 @@ import { ExamSettingsSection } from './SettingsSection.tsx';
 /** 本包依赖的 Client 服务名（对应 package.json `dsh.client.inject` 的包级声明）。 */
 export const inject = ['slots'];
 
-const PLUGIN_ID = '@exam/dsh-exam';
+const PLUGIN_ID = '@skillre/dsh-exam';
 const ENTRY_ID = 'exam-assistant';
 
 export function apply(ctx: Context): void {
-  // 1. 样式注入：<style data-plugin="@exam/dsh-exam">，随 Fiber 卸载移除。
+  // 1. 样式注入：<style data-plugin="@skillre/dsh-exam">，随 Fiber 卸载移除。
   //    client-modules 的 claimStyles 按 data-plugin 认领 <style> 标签，HMR/卸载可精确回收。
   ctx.effect(() => {
     const style = document.createElement('style');

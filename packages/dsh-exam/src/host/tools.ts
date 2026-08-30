@@ -1,7 +1,7 @@
 /**
  * dsh-exam tools entry（exam-coach preset 的 scoped Tools 注册面）。
  *
- * 本模块是 `@exam/dsh-exam/tools` 独立入口：在 preset 的 AGENT-PLANE ctx 上
+ * 本模块是 `@skillre/dsh-exam/tools` 独立入口：在 preset 的 AGENT-PLANE ctx 上
  * 调用 `ctx.tools.register(...)` 注册 10 个 exam_* 工具 + 一条 systemPrompt
  * 引导节，因此**仅 exam-coach 会话可见**（scoped registration shadows
  * globals；preset 外会话零影响）。工具只读写 exam 域数据（ExamService），
@@ -726,7 +726,7 @@ function formatPlan(value: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// 插件入口（preset agent.cordis.yml 引用 @exam/dsh-exam/tools 的行）
+// 插件入口（preset agent.cordis.yml 引用 @skillre/dsh-exam/tools 的行）
 // ---------------------------------------------------------------------------
 
 /** Cordis 插件名（loader 诊断用）。 */

@@ -5,23 +5,23 @@
 # 覆盖/`disabled` 语义见 loader 文档。它**不修改任何 shipped DSH preset**，
 # 只作为最后一层补丁叠加到 profile 的组成上。
 #
-# 两种消费方式（配置只引用本地包 @exam/dsh-exam，见 package.json：
+# 两种消费方式（配置只引用本地包 @skillre/dsh-exam，见 package.json：
 # `dsh.bundle.patch` 指向本文件）：
-#   1. 作为 bundle：把 `@exam/dsh-exam` 加入 profile 的
+#   1. 作为 bundle：把 `@skillre/dsh-exam` 加入 profile 的
 #      `dsh.profile.bundles`（需先把本 workspace 包安装/链接进
 #      `$DSH_HOME/profiles/<name>/node_modules`）。
 #   2. 作为 profile 补丁：把下方 `- insert:` 条目复制进
 #      `$DSH_HOME/profiles/<name>/cordis.patch.yml`。
 #
 # host 行（当前即可加载）：
-# - 插件包 `@exam/dsh-exam` 的 main 指向 dist/host/index.js（Service 类插件，
+# - 插件包 `@skillre/dsh-exam` 的 main 指向 dist/host/index.js（Service 类插件，
 #   inject webServer/settings/llm，`super(ctx, 'exam')` 提供 `ctx.exam`）。
 # - `config.dataDir` 为显式数据目录字段；相对路径基于 dsh 启动目录（cwd）
 #   解析。不设置时回退 settings `exam.dataDir`，再回退 `<cwd>/.exam-data`。
 #   数据目录是**可配置路径**，绝不包含 API Key（密钥走 DSH credentials）。
 - insert:
     - id: dsh-exam
-      name: '@exam/dsh-exam'
+      name: '@skillre/dsh-exam'
       config:
         dataDir: .exam-data
 

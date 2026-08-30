@@ -1,5 +1,5 @@
 {
-  "name": "@exam/dsh-exam",
+  "name": "@skillre/dsh-exam",
   "version": "0.2.0",
   "description": "考试助手：DeepSeek Harness (DSH) 原生考试练习插件 —— 题库管理、练习/测验、AI 讲解与评分、学情洞察、错题本、学习计划（Host Cordis 插件 + dsh.client 浏览器包）",
   "license": "MIT",

@@ -16,7 +16,7 @@ globalThis.__ModuleLoader__ = { load: (handoff) => { captured = handoff; } };
 await import(bundlePath);
 
 if (!captured) throw new Error('bundle did not call window.__ModuleLoader__.load');
-if (captured.id !== '@exam/dsh-exam') throw new Error(`unexpected id: ${captured.id}`);
+if (captured.id !== '@skillre/dsh-exam') throw new Error(`unexpected id: ${captured.id}`);
 
 const mod = captured.factory((spec) => require(spec));
 if (!Array.isArray(mod.inject)) throw new Error('exports.inject is not an array');
