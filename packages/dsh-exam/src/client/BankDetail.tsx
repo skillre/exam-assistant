@@ -115,6 +115,31 @@ type TopicSuggestState =
   | { phase: 'error'; error: ExamErrorDto }
   | { phase: 'ready'; rows: TopicSuggestDraft[]; submitting: boolean; applied: number | null; error: ExamErrorDto | null };
 
+/** 全库标注向导模式：宽松=每轮建议自动写回；严格=各轮草稿合并由用户统一确认。 */
+type WizardMode = 'lenient' | 'strict';
+
+/** 全库一键标注的进行状态（进度 / 汇总 / 错误）。 */
+interface WizardState {
+  /** 向导是否正在运行（防重入 + 禁用相关控件）。 */
+  running: boolean;
+  /** 当前已完成的轮次（1 起）。 */
+  round: number;
+  /** 宽松模式累计写回题数（严格模式恒为 0）。 */
+  applied: number;
+  /** 严格模式本轮合并进草稿表的条数（宽松模式恒为 0）。 */
+  merged: number;
+  error: ExamErrorDto | null;
+  /** 完成后的汇总文案（成功后展示）。 */
+  summary: string | null;
+}
+
+const EMPTY_WIZARD: WizardState = { running: false, round: 0, applied: 0, merged: 0, error: null, summary: null };
+
+/** 全库一键标注的单轮批量大小（服务端单次上限 100）。 */
+const WIZARD_BATCH = 100;
+/** 循环上限保护：防止服务端反复返回相同候选导致死循环。 */
+const MAX_WIZARD_ROUNDS = 200;
+
 export function BankDetail({
   bankId,
   bankName,
@@ -185,6 +210,18 @@ export function BankDetail({
   /** AI 知识标注（P2 批量标注草稿确认制）状态。 */
   const [topicSuggest, setTopicSuggest] = useState<TopicSuggestState>({ phase: 'idle' });
   const topicAbort = useRef<AbortController | null>(null);
+  /** 单题「AI 补标」独立取消域（不与向导/草稿流程互掐）。 */
+  const suggestAbort = useRef<AbortController | null>(null);
+  /** 全库标注向导模式（默认宽松）。 */
+  const [wizardMode, setWizardMode] = useState<WizardMode>('lenient');
+  /** 全库一键标注进行状态。 */
+  const [wizard, setWizard] = useState<WizardState>(EMPTY_WIZARD);
+  /** 严格模式向导本地累计草稿（避免循环里闭包读到的 topicSuggest 过期）。 */
+  const wizardDraftRef = useRef<TopicSuggestDraft[]>([]);
+  /** 单题「AI 补标」进行中题目 id（行级 busy，参考 explainBusyId）。 */
+  const [suggestBusyId, setSuggestBusyId] = useState<string | null>(null);
+  /** 单题「AI 补标」失败错误（行级展示，参考 explainError）。 */
+  const [suggestError, setSuggestError] = useState<{ questionId: string; error: ExamErrorDto } | null>(null);
 
   /** 由工具条状态组装 ListQuestionsFilter（t9 契约）。 */
   const buildFilter = useCallback((): ListQuestionsFilter => {
@@ -252,6 +289,7 @@ export function BankDetail({
       bulkAbort.current?.abort();
       overviewAbort.current?.abort();
       topicAbort.current?.abort();
+      suggestAbort.current?.abort();
     };
   }, [load, reloadTagOverview]);
 
@@ -564,7 +602,7 @@ export function BankDetail({
     const controller = new AbortController();
     topicAbort.current = controller;
     try {
-      const items = await topicSuggestions(bankId, 50, controller.signal);
+      const items = await topicSuggestions(bankId, { limit: 50 }, controller.signal);
       if (controller.signal.aborted) return;
       const rows: TopicSuggestDraft[] = items.map((it) => ({
         questionId: it.questionId,
@@ -582,6 +620,7 @@ export function BankDetail({
   };
 
   const updateTopicRow = (index: number, patch: Partial<TopicSuggestDraft>) => {
+    if (wizard.running) return; // 向导运行中禁止编辑草稿（避免被合并覆盖）
     setTopicSuggest((prev) =>
       prev.phase === 'ready'
         ? { ...prev, rows: prev.rows.map((r, i) => (i === index ? { ...r, ...patch } : r)), error: null }
@@ -590,10 +629,12 @@ export function BankDetail({
   };
 
   const removeTopicRow = (index: number) => {
+    if (wizard.running) return;
     setTopicSuggest((prev) => (prev.phase === 'ready' ? { ...prev, rows: prev.rows.filter((_, i) => i !== index) } : prev));
   };
 
   const toggleAllTopics = () => {
+    if (wizard.running) return;
     setTopicSuggest((prev) => {
       if (prev.phase !== 'ready') return prev;
       const all = prev.rows.every((r) => r.selected);
@@ -603,6 +644,7 @@ export function BankDetail({
 
   /** 确认写回：仅提交勾选行（覆盖式 topics），成功后刷新列表与标签一览。 */
   const onApplyTopicChanges = async () => {
+    if (wizard.running) return; // 向导运行中禁用，避免互掐 topicAbort
     if (topicSuggest.phase !== 'ready') return;
     const items = topicSuggest.rows
       .filter((r) => r.selected)
@@ -625,6 +667,126 @@ export function BankDetail({
     } catch (err) {
       if (controller.signal.aborted) return;
       setTopicSuggest({ ...topicSuggest, submitting: false, error: err as ExamErrorDto });
+    }
+  };
+
+  /**
+   * 全库一键标注：循环 limit=WIZARD_BATCH 拉草稿直到返回空数组即完成。
+   * - 宽松：每轮建议直接 applyTopics 写回，累计已应用题数；
+   * - 严格：每轮草稿合并进草稿确认表（按 questionId 去重），由用户最后统一确认。
+   * - 可取消（沿用 topicAbort 分域）、防重入（running 禁用按钮）、200 轮上限防死循环。
+   */
+  const onAnnotateAll = async () => {
+    if (wizard.running) return; // busy 防护：防重入
+    setWizard({ ...EMPTY_WIZARD, running: true });
+    // 严格模式：从当前草稿表快照出发继续合并（复用现有草稿表状态）
+    if (wizardMode === 'strict') {
+      wizardDraftRef.current = topicSuggest.phase === 'ready' ? topicSuggest.rows.slice() : [];
+    }
+    topicAbort.current?.abort();
+    const controller = new AbortController();
+    topicAbort.current = controller;
+    let applied = 0;
+    let merged = 0;
+    let rounds = 0;
+    try {
+      for (rounds = 0; rounds < MAX_WIZARD_ROUNDS; rounds++) {
+        setWizard((prev) => ({ ...prev, round: rounds + 1 }));
+        const items = await topicSuggestions(bankId, { limit: WIZARD_BATCH }, controller.signal);
+        if (controller.signal.aborted) return; // Abort 后静默不报错
+        if (items.length === 0) break; // 返回空数组即完成
+        if (wizardMode === 'lenient') {
+          // 宽松：本批建议直接写回，累计已应用题数
+          const res = await applyTopics(
+            items.map((it) => ({ questionId: it.questionId, topics: it.suggestedTopics ?? [] })),
+            controller.signal,
+          );
+          if (controller.signal.aborted) return;
+          applied += res.updated;
+          setWizard((prev) => ({ ...prev, applied }));
+        } else {
+          // 严格：本批草稿并入确认表，统计本轮新增条数（按 questionId 去重）
+          const draft = wizardDraftRef.current;
+          const existing = new Set(draft.map((r) => r.questionId));
+          const before = draft.length;
+          for (const it of items) {
+            if (existing.has(it.questionId)) continue;
+            existing.add(it.questionId);
+            draft.push({
+              questionId: it.questionId,
+              stem: it.stem,
+              currentTopics: it.currentTopics ?? [],
+              currentTags: it.currentTags ?? [],
+              suggested: (it.suggestedTopics ?? []).join(', '),
+              selected: true,
+            });
+          }
+          merged += draft.length - before;
+          setTopicSuggest({ phase: 'ready', rows: draft.slice(), submitting: false, applied: null, error: null });
+          setWizard((prev) => ({ ...prev, merged }));
+        }
+      }
+      if (controller.signal.aborted) return;
+      const capped = rounds >= MAX_WIZARD_ROUNDS;
+      // 完成汇总：共应用 N 题 / 库内已无待标注题
+      const summary =
+        wizardMode === 'lenient'
+          ? `共应用 ${applied} 题知识点 —— ${capped ? `已达 ${MAX_WIZARD_ROUNDS} 轮上限，可能仍有待标注题` : '库内已无待标注题'}`
+          : `已合并 ${merged} 条草稿到下方确认表 —— ${capped ? `已达 ${MAX_WIZARD_ROUNDS} 轮上限，可能仍有待标注题` : '库内已无待标注题'}，核对后统一写回`;
+      setWizard({ running: false, round: rounds, applied, merged, error: null, summary });
+      void load();
+      void reloadTagOverview();
+      onQuestionsChanged?.();
+    } catch (err) {
+      if (controller.signal.aborted) return; // Abort 后静默不报错
+      setWizard({ running: false, round: rounds, applied, merged, error: err as ExamErrorDto, summary: null });
+    } finally {
+      // 取消/Abort 收尾：恢复 running=false（静默），严格模式已合并草稿保留待确认
+      if (controller.signal.aborted) setWizard((prev) => ({ ...prev, running: false }));
+    }
+  };
+
+  /**
+   * 单题「AI 补标」：按 questionId 取该题建议 → applyTopics 写回 → 行内替换该题。
+   * 行级 busy（suggestBusyId）与行级错误（suggestError）沿用 explainError 模式；
+   * 独立取消域 suggestAbort，不影响向导/草稿流程。
+   */
+  const onSuggestOne = async (q: ExamQuestionDto) => {
+    if (wizard.running) return; // 向导运行中禁止（共用标注资源）
+    if (suggestBusyId !== null) return; // busy 防护：防重入
+    if (isDeletedQuestion(q)) return;
+    setSuggestBusyId(q.id);
+    setSuggestError(null);
+    suggestAbort.current?.abort();
+    const controller = new AbortController();
+    suggestAbort.current = controller;
+    try {
+      const items = await topicSuggestions(bankId, { questionIds: [q.id] }, controller.signal);
+      if (controller.signal.aborted) return;
+      const match = items.find((it) => it.questionId === q.id);
+      const topics = (match?.suggestedTopics ?? []).slice();
+      if (!match || topics.length === 0) {
+        setSuggestError({
+          questionId: q.id,
+          error: { code: 'EXAM_NO_SUGGESTION', message: '未获得该题的知识点建议（可能为主观题或已标注）' },
+        });
+        return;
+      }
+      await applyTopics([{ questionId: q.id, topics }], controller.signal);
+      if (controller.signal.aborted) return;
+      // 行内替换该题（参考 explainGeneric 的行级更新模式，无需整表重拉）
+      setQuestions((prev) =>
+        prev.phase === 'ready'
+          ? { ...prev, questions: prev.questions.map((item) => (item.id === q.id ? { ...item, topics } : item)) }
+          : prev,
+      );
+      void reloadTagOverview();
+      onQuestionsChanged?.();
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      setSuggestError({ questionId: q.id, error: err as ExamErrorDto });
+    } finally {
+      setSuggestBusyId(null);
     }
   };
 
@@ -1006,6 +1168,15 @@ export function BankDetail({
                           </button>
                           <button
                             type="button"
+                            className="exam-assistant-button exam-assistant-button--ghost exam-assistant-button--sm"
+                            disabled={suggestBusyId !== null || wizard.running}
+                            onClick={() => void onSuggestOne(q)}
+                            title="AI 为该题生成知识点建议并写回"
+                          >
+                            {suggestBusyId === q.id ? '补标中…' : 'AI 补标'}
+                          </button>
+                          <button
+                            type="button"
                             className={
                               confirmDeleteId === q.id
                                 ? 'exam-assistant-button exam-assistant-button--danger exam-assistant-button--sm'
@@ -1029,6 +1200,11 @@ export function BankDetail({
                     </div>
                   </div>
                 </div>
+                {suggestError?.questionId === q.id ? (
+                  <p className="exam-assistant-question-item__error" role="alert">
+                    AI 补标失败：{suggestError.error.code}: {suggestError.error.message}
+                  </p>
+                ) : null}
                 {expandedId === q.id ? (
                   <div className="exam-assistant-question-item__detail">
                     {q.options.length > 0 ? (
@@ -1132,11 +1308,93 @@ export function BankDetail({
           <button
             type="button"
             className="exam-assistant-button exam-assistant-button--sm"
-            disabled={topicSuggest.phase === 'loading' || (topicSuggest.phase === 'ready' && topicSuggest.submitting)}
+            disabled={
+              wizard.running ||
+              topicSuggest.phase === 'loading' ||
+              (topicSuggest.phase === 'ready' && topicSuggest.submitting)
+            }
             onClick={() => void onTopicSuggest()}
           >
             {topicSuggest.phase === 'loading' ? 'AI 标注中…' : 'AI 知识标注…'}
           </button>
+        </div>
+
+        {/* 全库标注向导：宽松自动写回 / 严格合并草稿（P2 批量标注升级） */}
+        <div className="exam-assistant-wizard">
+          <div className="exam-assistant-wizard__toolbar">
+            <div className="exam-assistant-wizard__modes" role="group" aria-label="全库标注模式">
+              <button
+                type="button"
+                className={
+                  wizardMode === 'lenient'
+                    ? 'exam-assistant-wizard__mode exam-assistant-wizard__mode--active'
+                    : 'exam-assistant-wizard__mode'
+                }
+                disabled={wizard.running}
+                aria-pressed={wizardMode === 'lenient'}
+                onClick={() => setWizardMode('lenient')}
+              >
+                宽松
+              </button>
+              <button
+                type="button"
+                className={
+                  wizardMode === 'strict'
+                    ? 'exam-assistant-wizard__mode exam-assistant-wizard__mode--active'
+                    : 'exam-assistant-wizard__mode'
+                }
+                disabled={wizard.running}
+                aria-pressed={wizardMode === 'strict'}
+                onClick={() => setWizardMode('strict')}
+              >
+                严格
+              </button>
+            </div>
+            <span className="exam-assistant-llm__meta">
+              {wizardMode === 'lenient'
+                ? '宽松：每轮建议自动写回，逐批累计'
+                : '严格：各轮草稿合并到下方确认表，核对后统一写回'}
+            </span>
+            <div className="exam-assistant-form-actions">
+              <button
+                type="button"
+                className="exam-assistant-button exam-assistant-button--sm"
+                disabled={
+                  wizard.running ||
+                  topicSuggest.phase === 'loading' ||
+                  (topicSuggest.phase === 'ready' && topicSuggest.submitting)
+                }
+                onClick={() => void onAnnotateAll()}
+              >
+                {wizard.running ? '标注中…' : '一键标注全库'}
+              </button>
+              {wizard.running ? (
+                <button
+                  type="button"
+                  className="exam-assistant-button exam-assistant-button--ghost exam-assistant-button--sm"
+                  onClick={() => topicAbort.current?.abort()}
+                >
+                  取消
+                </button>
+              ) : null}
+            </div>
+          </div>
+          {wizard.running ? (
+            <p className="exam-assistant-llm__meta" role="status">
+              正在标注全库… 第 {wizard.round} 轮
+              {wizardMode === 'lenient' ? ` · 已应用 ${wizard.applied} 题` : ` · 已合并 ${wizard.merged} 条草稿`}
+            </p>
+          ) : wizard.summary !== null ? (
+            <p className="exam-assistant-status exam-assistant-status--ok" role="status">
+              <span className="exam-assistant-status__dot" aria-hidden="true" />
+              {wizard.summary}
+            </p>
+          ) : null}
+          {wizard.error !== null ? (
+            <p className="exam-assistant-error" role="alert">
+              {wizard.error.code}: {wizard.error.message}
+            </p>
+          ) : null}
         </div>
         {tagOverview === null ? (
           <p className="exam-assistant-empty">暂无标签 / 知识点数据</p>
@@ -1190,7 +1448,7 @@ export function BankDetail({
                     type="checkbox"
                     checked={topicSuggest.rows.length > 0 && topicSuggest.rows.every((r) => r.selected)}
                     onChange={toggleAllTopics}
-                    disabled={topicSuggest.submitting}
+                    disabled={topicSuggest.submitting || wizard.running}
                     aria-label="全选知识点候选"
                   />
                   全选
@@ -1198,7 +1456,7 @@ export function BankDetail({
                 <button
                   type="button"
                   className="exam-assistant-button exam-assistant-button--ghost exam-assistant-button--sm"
-                  disabled={topicSuggest.submitting}
+                  disabled={topicSuggest.submitting || wizard.running}
                   onClick={() => setTopicSuggest({ phase: 'idle' })}
                 >
                   放弃
@@ -1206,7 +1464,7 @@ export function BankDetail({
                 <button
                   type="button"
                   className="exam-assistant-button exam-assistant-button--sm"
-                  disabled={topicSuggest.submitting}
+                  disabled={topicSuggest.submitting || wizard.running}
                   onClick={() => void onApplyTopicChanges()}
                 >
                   {topicSuggest.submitting ? '写回中…' : '确认写回'}
@@ -1225,7 +1483,7 @@ export function BankDetail({
                           type="checkbox"
                           checked={row.selected}
                           onChange={() => updateTopicRow(i, { selected: !row.selected })}
-                          disabled={topicSuggest.submitting}
+                          disabled={topicSuggest.submitting || wizard.running}
                           aria-label={`选择本题（${row.stem}）`}
                         />
                       </label>
@@ -1234,7 +1492,7 @@ export function BankDetail({
                         type="button"
                         className="exam-assistant-button exam-assistant-button--ghost exam-assistant-button--sm"
                         onClick={() => removeTopicRow(i)}
-                        disabled={topicSuggest.submitting}
+                        disabled={topicSuggest.submitting || wizard.running}
                         aria-label={`删除第 ${i + 1} 条草稿`}
                       >
                         删除
@@ -1259,7 +1517,7 @@ export function BankDetail({
                         className="exam-assistant-input"
                         value={row.suggested}
                         onChange={(event) => updateTopicRow(i, { suggested: event.target.value })}
-                        disabled={topicSuggest.submitting}
+                        disabled={topicSuggest.submitting || wizard.running}
                         placeholder="知识单元级，2~4 个，不要用题库名"
                       />
                     </div>

@@ -178,8 +178,9 @@ score 与 verdict 须一致：score>=60 为 correct，40-59 为 partial，<40 �
 
 const IMPORT_SYSTEM = `你是出题专家。请从用户提供的资料中抽取至多 8 道高质量客观题（单选/多选/判断）。
 仅输出一个 JSON 数组，不要任何多余文字、不要代码围栏，每题格式：
-{"type": "single" 或 "multiple" 或 "boolean", "stem": "题干", "options": ["A. 选项一", "B. 选项二", ...], "answer": 单选为选项标识如 "A"；多选为标识数组如 ["A","C"]；判断为 "true" 或 "false", "explanation": "解析（可省略）", "tags": ["标签"]（可省略）}
-要求：options 每项以大写字母加句点开头（"A. "）；判断题的 options 为空数组 []; answer 必须与 options 标识一致；题干与选项忠于资料。`;
+{"type": "single" 或 "multiple" 或 "boolean", "stem": "题干", "options": ["A. 选项一", "B. 选项二", ...], "answer": 单选为选项标识如 "A"；多选为标识数组如 ["A","C"]；判断为 "true" 或 "false", "explanation": "解析（可省略）", "tags": ["标签1", "标签2", "标签3"], "topics": ["知识点1", "知识点2"]}
+要求：options 每项以大写字母加句点开头（"A. "）；判断题的 options 为空数组 []; answer 必须与 options 标识一致；题干与选项忠于资料。
+tags 必产 1-3 个（主题/章节级中文短语）；topics 必产 2-4 个（知识单元级中文短语，粒度细于 tags；不得使用题库名/文件名/年份等来源信息；不得与 tags 同项）。`;
 
 const DIAGNOSIS_SYSTEM = `你是学情分析专家。用户会提供一名学生的学情统计（JSON）。请输出**仅一个 JSON 对象**，不要任何多余文字、不要代码围栏：
 {"summary": "总体学情概述（中文，2-4 句）", "weaknesses": ["薄弱点1", "薄弱点2", ...], "suggestions": [{"text": "建议1", "action": {"mode": "byType" 或 "byTag" 或 "wrong" 或 "all", "type": "single"|"multiple"|"boolean"|"essay"（byType 时提供）, "tag": "标签"（byTag 时提供）}, ...]}
@@ -923,6 +924,9 @@ function normalizeImportedQuestion(item: unknown): ImportedQuestion | undefined 
   }
   const tags = record.tags;
   if (tags !== undefined && tags !== null && !isStringArray(tags)) return undefined;
+  // topics 与 tags 同规则：缺失容忍；非法形态（非字符串数组）→ 整条丢弃。
+  const topics = record.topics;
+  if (topics !== undefined && topics !== null && !isStringArray(topics)) return undefined;
   return {
     type: type as ImportedQuestion['type'],
     stem: stem.trim(),
@@ -930,7 +934,14 @@ function normalizeImportedQuestion(item: unknown): ImportedQuestion | undefined 
     answer: type === 'single' ? (answer as string).trim() : answer,
     ...(explanation !== undefined && explanation !== null ? { explanation: explanation as string } : {}),
     ...(tags !== undefined && tags !== null ? { tags: tags as string[] } : {}),
+    // 有效 topics：trim、去空、去重、最多保留 4 个（P1 提示词要求 2~4 个）。
+    ...(topics !== undefined && topics !== null ? { topics: normalizeImportedTopics(topics) } : {}),
   };
+}
+
+/** 导入 topics 规范化：trim、去空、去重、最多保留 4 个。 */
+function normalizeImportedTopics(raw: string[]): string[] {
+  return [...new Set(raw.map((topic) => topic.trim()).filter((topic) => topic.length > 0))].slice(0, 4);
 }
 
 function isStringArray(value: unknown): value is string[] {

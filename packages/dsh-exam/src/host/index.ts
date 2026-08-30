@@ -1454,6 +1454,7 @@ function handleBanksPrefix(
         const result = await service.explainTopicSuggestions({
           bankId,
           ...(input.limit !== undefined ? { limit: input.limit } : {}),
+          ...(input.questionIds !== undefined ? { questionIds: input.questionIds } : {}),
           provider: route.provider,
           model: route.model,
           signal,
@@ -1883,16 +1884,22 @@ function parseExplainGenericRequest(body: unknown): ExplainGenericRequest {
   };
 }
 
-/** POST /exam/api/banks/:bankId/topic-suggestions 请求体：`{ limit?: number }`（缺省 50，上限 100 由服务层 clamp）。 */
-function parseTopicSuggestRequest(body: unknown): { limit?: number } {
+/** POST /exam/api/banks/:bankId/topic-suggestions 请求体：`{ limit?: number, questionIds?: string[] }`（limit 缺省 50 上限 100、questionIds 1-20 由服务层校验/透传）。 */
+function parseTopicSuggestRequest(body: unknown): { limit?: number; questionIds?: string[] } {
   if (body === undefined || body === null) return {};
   const obj = asObject(body);
-  if (obj.limit === undefined) return {};
-  const limit = obj.limit;
-  if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1) {
-    throw new ExamServiceError('EXAM_INVALID_BODY', 'limit must be a positive integer');
+  const result: { limit?: number; questionIds?: string[] } = {};
+  if (obj.limit !== undefined) {
+    const limit = obj.limit;
+    if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1) {
+      throw new ExamServiceError('EXAM_INVALID_BODY', 'limit must be a positive integer');
+    }
+    result.limit = limit;
   }
-  return { limit };
+  if (obj.questionIds !== undefined) {
+    result.questionIds = asStringArray(obj.questionIds);
+  }
+  return result;
 }
 
 /** POST /exam/api/questions/topics 请求体：`{ items: { questionId, topics[] }[] }`（服务层逐题校验）。 */

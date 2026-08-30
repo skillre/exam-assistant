@@ -417,6 +417,7 @@ function buildExamToolDefinitions(runtime: ExamToolsRuntime): ExamToolDefinition
           },
           explanation: { type: 'string', description: '可选：解析' },
           tags: { type: 'array', items: { type: 'string' }, description: '可选：标签' },
+          topics: { type: 'array', items: { type: 'string' }, description: '可选：知识点（1-4 个，知识单元级，不得与标签同项）' },
         },
         required: ['bankId', 'type', 'stem', 'answer'],
       },
@@ -435,7 +436,9 @@ function buildExamToolDefinitions(runtime: ExamToolsRuntime): ExamToolDefinition
         const explanation =
           args.explanation === undefined ? undefined : args.explanation === null ? null : optString(args, 'explanation');
         const tags = args.tags === undefined ? undefined : args.tags === null ? null : optStringArray(args, 'tags');
-        const question = exam.createQuestion(bankId, { type, stem, options, answer: args.answer, explanation, tags });
+        const topics =
+          args.topics === undefined ? undefined : args.topics === null ? null : optStringArray(args, 'topics');
+        const question = exam.createQuestion(bankId, { type, stem, options, answer: args.answer, explanation, tags, topics });
         return {
           ok: true,
           question: {

@@ -242,7 +242,7 @@ test('execute：exam_create_bank 调用 createBank', async () => {
   assert.equal(result.bank.id, 'b9');
 });
 
-test('execute：exam_create_question 组装输入并调用 createQuestion', async () => {
+test('execute：exam_create_question 组装输入并调用 createQuestion（含 tags/topics 透传）', async () => {
   const { exam, calls } = recordingExam({
     createQuestion: (bankId: string, input: Record<string, unknown>) => ({
       id: 'q-new',
@@ -251,21 +251,36 @@ test('execute：exam_create_question 组装输入并调用 createQuestion', asyn
       stem: input.stem,
       answer: input.answer,
       tags: input.tags ?? null,
+      topics: input.topics ?? null,
     }),
   });
   const runtime = fakeRuntime({ exam });
   const result = await callTool(runtime, 'exam_create_question', {
-    bankId: 'b1', type: 'single', stem: '题干', options: ['A', 'B'], answer: 'A', explanation: '解析', tags: ['数学'],
+    bankId: 'b1', type: 'single', stem: '题干', options: ['A', 'B'], answer: 'A', explanation: '解析', tags: ['数学'], topics: ['算术'],
   });
   assert.deepEqual(calls, [
     {
       method: 'createQuestion',
-      args: ['b1', { type: 'single', stem: '题干', options: ['A', 'B'], answer: 'A', explanation: '解析', tags: ['数学'] }],
+      args: ['b1', { type: 'single', stem: '题干', options: ['A', 'B'], answer: 'A', explanation: '解析', tags: ['数学'], topics: ['算术'] }],
     },
   ]);
   assert.equal(result.ok, true);
   assert.equal(result.question.id, 'q-new');
   assert.equal(result.question.answer, 'A');
+});
+
+test('execute：exam_create_question 未传 topics 时不透传该字段（保持 undefined）', async () => {
+  const { exam, calls } = recordingExam({
+    createQuestion: (bankId: string, input: Record<string, unknown>) => ({
+      id: 'q-new', bankId, type: input.type, stem: input.stem, answer: input.answer, tags: null,
+    }),
+  });
+  const runtime = fakeRuntime({ exam });
+  const result = await callTool(runtime, 'exam_create_question', {
+    bankId: 'b1', type: 'single', stem: '题干', options: ['A', 'B'], answer: 'A',
+  });
+  assert.equal((calls[0]!.args[1] as Record<string, unknown>).topics, undefined, '未传 topics 时不带该字段');
+  assert.equal(result.ok, true);
 });
 
 test('render：题目回显缺答案时不出现 "答案: undefined"，有答案时正常渲染', async () => {

@@ -149,6 +149,8 @@ export interface ExamQuestionDto {
    * 统计/讲解/个性化上下文优先消费；null = 未标注（退化到 tags 统计）。
    */
   topics: string[] | null;
+  /** 知识点来源（内部元数据：manual/import/batch/ai-deep）；null = 未标注/旧数据。 */
+  topicsSource?: string | null;
   createdAt: number;
   updatedAt: number;
   /**
@@ -365,7 +367,7 @@ export interface ImportedQuestion {
   answer: unknown;
   explanation?: string | null;
   tags?: string[] | null;
-  /** 知识点候选（P1 导入提示词要求 2~4 个；可省略）。 */
+  /** 知识点（P1 导入提示词要求必产 2~4 个知识单元级中文短语；解析容忍缺失/非法形态）。 */
   topics?: string[] | null;
 }
 

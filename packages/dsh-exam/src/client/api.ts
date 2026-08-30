@@ -827,10 +827,18 @@ export async function explainGeneric(
 /**
  * POST /exam/api/banks/:bankId/topic-suggestions —— AI 知识标注草稿。
  * 对选定题库逐题 LLM 判别 topics；返回草稿（不自动写回），用户确认后走 applyTopics。
- * @param limit 缺省 50（服务端单次最多 100）；仅"可生成建议"的客观题入选。
+ * @param opts.limit 缺省 50（服务端单次最多 100）；仅"可生成建议"的客观题入选。
+ * @param opts.questionIds 提供时只对这批题目返回建议（长度 1-20；用于单题 AI 补标）。
  */
-export async function topicSuggestions(bankId: string, limit?: number, signal?: AbortSignal): Promise<TopicSuggestionDto[]> {
-  const body = limit !== undefined ? { limit } : {};
+export async function topicSuggestions(
+  bankId: string,
+  opts: { limit?: number; questionIds?: string[] } = {},
+  signal?: AbortSignal,
+): Promise<TopicSuggestionDto[]> {
+  // body 透传两个可选字段（均缺省时发空对象，由服务端按缺省 50 处理）
+  const body: { limit?: number; questionIds?: string[] } = {};
+  if (opts.limit !== undefined) body.limit = opts.limit;
+  if (opts.questionIds !== undefined && opts.questionIds.length > 0) body.questionIds = opts.questionIds;
   const result = await jsonRequest<TopicSuggestionsResultDto>(
     `${EXAM_API_BASE}/banks/${encodeURIComponent(bankId)}/topic-suggestions`,
     jsonBody('POST', body),

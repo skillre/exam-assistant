@@ -3240,6 +3240,73 @@ select.exam-assistant-input {
   gap: 6px 14px;
 }
 
+/* ---- 全库标注向导（宽松自动写回 / 严格合并草稿） ---- */
+.exam-assistant-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--dsw-alias-border-l2, #e5e7eb);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1, #ffffff) 60%, transparent);
+}
+
+.exam-assistant-wizard__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.exam-assistant-wizard__modes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2, #fafafa);
+}
+
+.exam-assistant-wizard__mode {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary, #6b7280);
+  background: transparent;
+  cursor: pointer;
+}
+
+.exam-assistant-wizard__mode--active {
+  color: var(--dsw-alias-bg-layer-1, #ffffff);
+  background: var(--dsw-alias-brand-primary, #2563eb);
+}
+
+.exam-assistant-wizard__mode:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.exam-assistant-wizard__mode:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #2563eb);
+  outline-offset: 1px;
+}
+
+/* 单题「AI 补标」失败：行级错误（不整页回退，仅标记出错行，参考错题本行级错误） */
+.exam-assistant-question-item__error {
+  margin: 0 12px 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary, #dc2626) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #dc2626) 8%, transparent);
+  color: var(--dsw-alias-state-error-primary, #dc2626);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 /* ==========================================================================
    手机级响应式（≤640px：面板抽屉化、单列、表单/错题行换行、44px 触达）。
    不新增高频动画（emil 约束）：仅布局/尺寸调整，动效令牌不变。

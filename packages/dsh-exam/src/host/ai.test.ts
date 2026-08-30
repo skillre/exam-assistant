@@ -242,6 +242,51 @@ test('parseImportedQuestions：全无效 → ExamLlmError(EXAM_LLM_STREAM_FAILED
   );
 });
 
+test('parseImportedQuestions：topics 规范化（trim/去空/去重/截断至 4）', async () => {
+  const output = JSON.stringify([
+    {
+      type: 'single',
+      stem: '知识点题',
+      options: ['A. 对', 'B. 错'],
+      answer: 'A',
+      tags: ['主题'],
+      topics: [' 知识1 ', '知识1', '', '知识2', '知识3', '知识4', '知识5'],
+    },
+  ]);
+  const questions = await createAiEngine(llmReturning(output)).parseImportedQuestions('资料文本', {
+    provider: 'p',
+    model: 'm',
+  });
+  assert.equal(questions.length, 1);
+  assert.deepEqual(questions[0]!.topics, ['知识1', '知识2', '知识3', '知识4'], 'trim/去空/去重/最多 4 个');
+});
+
+test('parseImportedQuestions：topics 缺失容忍（结果不含该字段，不影响解析）', async () => {
+  const output = JSON.stringify([{ type: 'single', stem: '无知识点', options: ['A. 对', 'B. 错'], answer: 'A' }]);
+  const questions = await createAiEngine(llmReturning(output)).parseImportedQuestions('资料文本', {
+    provider: 'p',
+    model: 'm',
+  });
+  assert.equal(questions.length, 1);
+  assert.equal(questions[0]!.stem, '无知识点');
+  assert.ok(!('topics' in questions[0]!), '缺失 topics 时结果不含该字段');
+});
+
+test('parseImportedQuestions：topics 非法形态（非字符串数组）→ 该条丢弃，其余保留', async () => {
+  const output = JSON.stringify([
+    { type: 'single', stem: '非法 topics', options: ['A. 对', 'B. 错'], answer: 'A', topics: [1, 2] },
+    { type: 'single', stem: '非法 topics 字符串', options: ['A. 对', 'B. 错'], answer: 'A', topics: '不是数组' },
+    { type: 'single', stem: '合法 topics', options: ['A. 对', 'B. 错'], answer: 'A', topics: ['知识'] },
+  ]);
+  const questions = await createAiEngine(llmReturning(output)).parseImportedQuestions('资料文本', {
+    provider: 'p',
+    model: 'm',
+  });
+  assert.equal(questions.length, 1, 'topics 非法形态的条目被过滤');
+  assert.equal(questions[0]!.stem, '合法 topics');
+  assert.deepEqual(questions[0]!.topics, ['知识']);
+});
+
 // ---------------------------------------------------------------------------
 // buildTutorContext
 // ---------------------------------------------------------------------------

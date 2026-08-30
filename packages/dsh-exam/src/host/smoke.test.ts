@@ -894,8 +894,16 @@ test('Phase2 Tutor：自由问答 + 绑定题目 + 会话列表 + 校验错误',
 
 test('Phase2 AI 导入：generate 草稿 → commit 入库 + 校验错误', async () => {
   const importJson = JSON.stringify([
-    { type: 'single', stem: 'TCP 的握手次数是？', options: ['A. 一次', 'B. 两次', 'C. 三次'], answer: 'C', explanation: '三次握手' },
-    { type: 'boolean', stem: 'UDP 是面向连接的。', options: [], answer: 'false' },
+    {
+      type: 'single',
+      stem: 'TCP 的握手次数是？',
+      options: ['A. 一次', 'B. 两次', 'C. 三次'],
+      answer: 'C',
+      explanation: '三次握手',
+      tags: ['网络'],
+      topics: ['传输层', 'TCP 连接'],
+    },
+    { type: 'boolean', stem: 'UDP 是面向连接的。', options: [], answer: 'false', tags: ['网络'], topics: ['传输层'] },
   ]);
   const examLlm = llmResponding((system) => (system?.includes('出题专家') ? importJson : ''));
   await withServer(
@@ -919,6 +927,7 @@ test('Phase2 AI 导入：generate 草稿 → commit 入库 + 校验错误', asyn
       assert.equal(generated.body.questions.length, 2);
       assert.equal(generated.body.questions[0].type, 'single');
       assert.equal(generated.body.questions[0].answer, 'C');
+      assert.deepEqual(generated.body.questions[0].topics, ['传输层', 'TCP 连接'], '草稿携带规范化 topics');
       assert.equal(generated.body.questions[1].type, 'boolean');
       assert.equal(typeof generated.body.draftId, 'string');
 
@@ -952,6 +961,13 @@ test('Phase2 AI 导入：generate 草稿 → commit 入库 + 校验错误', asyn
       assert.equal(typeof committed.body.batchId, 'string');
       const listed = await fetchJson(base, `/exam/api/banks/${bankId}/questions`);
       assert.equal(listed.body.questions.length, 2);
+      const qSingle = listed.body.questions.find((q: any) => q.stem.includes('TCP 的握手次数'));
+      const qBoolean = listed.body.questions.find((q: any) => q.stem.includes('UDP'));
+      assert.ok(qSingle && qBoolean, '两题都已入库');
+      assert.deepEqual(qSingle.topics, ['传输层', 'tcp连接'], '导入 topics 落库（标签规范化）');
+      assert.equal(qSingle.topicsSource, 'import', '导入路径 topicsSource=import');
+      assert.deepEqual(qBoolean.topics, ['传输层'], '第二题 topics 落库');
+      assert.equal(qBoolean.topicsSource, 'import');
 
       // 批次幂等：同 batchId 重发 → replayed:true 零写入（列表仍 2 题）
       const replayed = await fetchJson(base, '/exam/api/import/commit', {
@@ -2559,8 +2575,16 @@ test('t5 Tutor 会话 close/delete 路由：close 幂等 + closed guard 409 + de
 
 test('t5 导入草稿路由：GET 恢复 / draftId 提交消费 409 / discard 204 / ghost 404', async () => {
   const importJson = JSON.stringify([
-    { type: 'single', stem: '三次握手次数？', options: ['A. 一', 'B. 两', 'C. 三'], answer: 'C', explanation: '三次握手' },
-    { type: 'boolean', stem: 'UDP 面向连接。', options: [], answer: 'false' },
+    {
+      type: 'single',
+      stem: '三次握手次数？',
+      options: ['A. 一', 'B. 两', 'C. 三'],
+      answer: 'C',
+      explanation: '三次握手',
+      tags: ['网络'],
+      topics: ['传输层', 'TCP 连接'],
+    },
+    { type: 'boolean', stem: 'UDP 面向连接。', options: [], answer: 'false', tags: ['网络'], topics: ['传输层'] },
   ]);
   const examLlm = llmResponding((system) => (system?.includes('出题专家') ? importJson : ''));
   await withServer(
@@ -2597,6 +2621,8 @@ test('t5 导入草稿路由：GET 恢复 / draftId 提交消费 409 / discard 20
       assert.equal(committed.status, 200);
       assert.equal(committed.body.count, 2);
       assert.equal(committed.body.questions.length, 2);
+      assert.deepEqual(committed.body.questions[0].topics, ['传输层', 'tcp连接'], 'draftId 提交透传 topics（标签规范化）');
+      assert.equal(committed.body.questions[0].topicsSource, 'import', 'draftId 提交 topicsSource=import');
 
       const consumed = await fetchJson(base, `/exam/api/import/drafts/${draftId}`);
       assert.equal(consumed.status, 409);
@@ -2879,6 +2905,112 @@ test('P2 topic-suggestions（POST /banks/:id/topic-suggestions）：LLM 生成�
       assert.deepEqual(byTags.get('togaf')!.suggestedTopics, ['架构治理', '数据架构'], 'LLM 命中');
       assert.deepEqual(byTags.get('架构')!.suggestedTopics, ['架构'], '空 topics 回退 [首个 tag]');
       assert.deepEqual(byTags.get('__none__')!.suggestedTopics, [], '无 tag → []');
+    },
+    { llm: DEFAULT_ROUTE, examLlm: fakeLlm },
+  );
+});
+
+test('P2 topic-suggestions questionIds：显式指定 → 仅对这批生成建议 + 校验错误（非法/不存在/跨库/essay）', async () => {
+  const fakeLlm = createExamLlm(
+    createFakeLlmService(async function* (options) {
+      const systemText = options.system ?? '';
+      if (systemText.includes('知识图谱标注员')) {
+        const userMsg = options.messages.find((m) => m.role === 'user');
+        const raw = userMsg?.content?.find((b) => b.type === 'text')?.text ?? '';
+        const start = raw.indexOf('[');
+        const batch = (start === -1 ? [] : JSON.parse(raw.slice(start))) as { index: number; stem: string }[];
+        const out = batch.map((item) => ({ index: item.index, topics: ['知识A', '知识B'] }));
+        yield textDelta(JSON.stringify(out));
+      }
+      yield finishStop();
+    }),
+  );
+  await withServer(
+    async (base) => {
+      const { bankId, question } = await mkBankAndQuestion(base, '显式题库', {
+        type: 'single',
+        stem: '第一题',
+        options: ['A. 一', 'B. 二'],
+        answer: 'A',
+        tags: ['主题'],
+      });
+      const q2 = await mkQuestion(base, bankId, {
+        type: 'single',
+        stem: '第二题',
+        options: ['A. 一', 'B. 二'],
+        answer: 'A',
+        tags: ['主题'],
+      });
+      const qEssay = await mkQuestion(base, bankId, {
+        type: 'essay',
+        stem: '主观题',
+        options: [],
+        answer: null,
+      });
+      const otherBank = await fetchJson(base, '/exam/api/banks', {
+        method: 'POST',
+        headers: POST_JSON,
+        body: JSON.stringify({ name: '另一个题库' }),
+      });
+      const otherId = otherBank.body.bank.id;
+      const otherQ = await mkQuestion(base, otherId, {
+        type: 'single',
+        stem: '别的库的题',
+        options: ['A. 一', 'B. 二'],
+        answer: 'A',
+      });
+
+      // 只对显式指定的题目生成建议（无视默认挑选题量，这里 limit 故意不传）。
+      const res = await fetchJson(base, `/exam/api/banks/${bankId}/topic-suggestions`, {
+        method: 'POST',
+        headers: POST_JSON,
+        body: JSON.stringify({ questionIds: [q2.id, question.id] }),
+      });
+      assert.equal(res.status, 200);
+      assert.deepEqual(
+        (res.body.items as any[]).map((it: any) => it.questionId),
+        [q2.id, question.id],
+        '按传入顺序只返回这批题（essay 不混入）',
+      );
+      for (const it of res.body.items) assert.deepEqual(it.suggestedTopics, ['知识a', '知识b']);
+
+      // 非法形态（非字符串数组 / 空数组 / 超 20 个）→ 400 EXAM_INVALID_BODY。
+      for (const bad of ['abc', [], new Array(21).fill('x')]) {
+        const badRes = await fetchJson(base, `/exam/api/banks/${bankId}/topic-suggestions`, {
+          method: 'POST',
+          headers: POST_JSON,
+          body: JSON.stringify({ questionIds: bad }),
+        });
+        assert.equal(badRes.status, 400);
+        assert.equal(badRes.body.error.code, 'EXAM_INVALID_BODY');
+      }
+
+      // 不存在的题目 → 404 EXAM_QUESTION_NOT_FOUND。
+      const ghost = await fetchJson(base, `/exam/api/banks/${bankId}/topic-suggestions`, {
+        method: 'POST',
+        headers: POST_JSON,
+        body: JSON.stringify({ questionIds: ['ghost'] }),
+      });
+      assert.equal(ghost.status, 404);
+      assert.equal(ghost.body.error.code, 'EXAM_QUESTION_NOT_FOUND');
+
+      // 跨库题目 → 404 EXAM_QUESTION_NOT_FOUND。
+      const cross = await fetchJson(base, `/exam/api/banks/${bankId}/topic-suggestions`, {
+        method: 'POST',
+        headers: POST_JSON,
+        body: JSON.stringify({ questionIds: [otherQ.id] }),
+      });
+      assert.equal(cross.status, 404);
+      assert.equal(cross.body.error.code, 'EXAM_QUESTION_NOT_FOUND');
+
+      // essay 题 → 400 EXAM_INVALID_QUESTION。
+      const essay = await fetchJson(base, `/exam/api/banks/${bankId}/topic-suggestions`, {
+        method: 'POST',
+        headers: POST_JSON,
+        body: JSON.stringify({ questionIds: [qEssay.id] }),
+      });
+      assert.equal(essay.status, 400);
+      assert.equal(essay.body.error.code, 'EXAM_INVALID_QUESTION');
     },
     { llm: DEFAULT_ROUTE, examLlm: fakeLlm },
   );

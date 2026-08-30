@@ -445,10 +445,13 @@ export interface ExamService {
    * P2 知识标注草稿（M5）：读该库活跃客观题（essay 跳过；优先 topics 为空的题），
    * 批量调用 LLM 生成知识点建议（ai.parseTopicSuggestions，8-10 题/批）；
    * 返回草稿 DTO（客户端确认后再经 applyTopics 写回）。limit 缺省 50，上限 100。
+   * questionIds 提供时（字符串数组，1-20 个）：忽略「优先 topics 为空」的默认挑选，
+   * 仅对这批题目生成建议（须存在且属于该库且为客观题，违规 4xx）。
    */
   explainTopicSuggestions(input: {
     bankId: string;
     limit?: number;
+    questionIds?: string[];
     provider?: string;
     model?: string;
     signal?: AbortSignal;
@@ -1517,16 +1520,23 @@ export function createExamService(deps: ExamServiceDeps): ExamService {
       requireBankExists(store, input.bankId);
       const { engine: aiEngine, provider, model } = requireLlmRoute(ai, llm, input.provider, input.model);
       const limit = clampTopicSuggestLimit(input.limit);
-      // 读者：该库活跃客观题（essay 跳过）；优先 topics 为空的题（未被标注者优先出建议）。
-      const objective = store
-        .listQuestionsByBank(input.bankId)
-        .filter((q) => q.type !== 'essay')
-        .sort((a, b) => {
-          const aEmpty = (a.topics ?? []).length === 0 ? 0 : 1;
-          const bEmpty = (b.topics ?? []).length === 0 ? 0 : 1;
-          return aEmpty - bEmpty;
-        })
-        .slice(0, limit);
+      let objective: QuestionRow[];
+      if (input.questionIds !== undefined) {
+        // 显式指定题目：只对这批客观题生成建议（忽略「优先 topics 为空」的默认挑选）。
+        objective = resolveTopicSuggestQuestions(store, input.bankId, input.questionIds);
+      } else {
+        // 缺省挑选：该库活跃客观题（essay 跳过）；优先 topics 为空的题
+        //（未被标注者优先出建议），按 limit 截断。
+        objective = store
+          .listQuestionsByBank(input.bankId)
+          .filter((q) => q.type !== 'essay')
+          .sort((a, b) => {
+            const aEmpty = (a.topics ?? []).length === 0 ? 0 : 1;
+            const bEmpty = (b.topics ?? []).length === 0 ? 0 : 1;
+            return aEmpty - bEmpty;
+          })
+          .slice(0, limit);
+      }
       const sources: TopicSuggestionSource[] = objective.map((q) => ({
         questionId: q.id,
         stem: q.stem,
@@ -1890,6 +1900,36 @@ function applyDeepTopicWriteback(store: ExamStore, question: QuestionRow, rawTop
 function clampTopicSuggestLimit(limit: number | undefined): number {
   if (limit === undefined || !Number.isInteger(limit) || limit < 1) return 50;
   return Math.min(limit, 100);
+}
+
+/**
+ * P2 显式指定题目的建议挑选（M5）：questionIds 校验为字符串数组、长度 1-20
+ * （非法 → EXAM_INVALID_BODY）；每道题须存在且属于该库（缺失/跨库 →
+ * EXAM_QUESTION_NOT_FOUND）且为客观题（essay → EXAM_INVALID_QUESTION，
+ * 与解析路径 assertNotEssay 语义一致）。返回按传入顺序的题目行。
+ */
+function resolveTopicSuggestQuestions(store: ExamStore, bankId: string, questionIds: string[]): QuestionRow[] {
+  if (!Array.isArray(questionIds) || !questionIds.every((id) => typeof id === 'string')) {
+    throw new ExamServiceError('EXAM_INVALID_BODY', 'questionIds must be a string array');
+  }
+  if (questionIds.length < 1 || questionIds.length > 20) {
+    throw new ExamServiceError('EXAM_INVALID_BODY', 'questionIds must have 1-20 entries');
+  }
+  return questionIds.map((id) => {
+    const row = store.getQuestion(id);
+    if (row === undefined) {
+      throw new ExamServiceError('EXAM_QUESTION_NOT_FOUND', `question not found: ${id}`);
+    }
+    if (row.bankId !== bankId) {
+      throw new ExamServiceError(
+        'EXAM_QUESTION_NOT_FOUND',
+        `question ${id} does not belong to bank ${bankId}`,
+      );
+    }
+    // essay 拒绝（默认挑选路径同样跳过 essay，语义一致）。
+    assertNotEssay(row);
+    return row;
+  });
 }
 
 /**
@@ -2299,6 +2339,15 @@ function normalizeDraftItems(draft: ImportDraftRow): CreateQuestionRequest[] {
       record.tags.every((entry) => typeof entry === 'string')
     ) {
       question.tags = record.tags as string[];
+    }
+    // 导入路径透传 topics（topicsSource 由 createQuestionInternal 按 import 置位）。
+    if (
+      record.topics !== undefined &&
+      record.topics !== null &&
+      Array.isArray(record.topics) &&
+      record.topics.every((entry) => typeof entry === 'string')
+    ) {
+      question.topics = record.topics as string[];
     }
     items.push(question);
   }

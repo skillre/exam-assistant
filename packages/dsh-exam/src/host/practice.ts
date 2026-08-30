@@ -480,6 +480,7 @@ export function toQuestionDto(row: QuestionRow): ExamQuestionDto {
     explanation: row.explanation,
     tags: row.tags,
     topics: row.topics,
+    topicsSource: row.topicsSource,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     deletedAt: row.deletedAt,
