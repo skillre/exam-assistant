@@ -1,0 +1,38 @@
+# dsh-exam 的 cordis.patch.yml —— 考试助手 Phase 0 的 DSH 组成补丁层。
+#
+# 本文件是 `@deepseek-ai/cordis-plugin-include` 的 PatchOptions 列表
+# （顶层 YAML 数组）：`insert` 向顶层 entry 列表追加插件行；`id` 命中的
+# 覆盖/`disabled` 语义见 loader 文档。它**不修改任何 shipped DSH preset**，
+# 只作为最后一层补丁叠加到 profile 的组成上。
+#
+# 两种消费方式（配置只引用本地包 @exam/dsh-exam，见 package.json：
+# `dsh.bundle.patch` 指向本文件）：
+#   1. 作为 bundle：把 `@exam/dsh-exam` 加入 profile 的
+#      `dsh.profile.bundles`（需先把本 workspace 包安装/链接进
+#      `$DSH_HOME/profiles/<name>/node_modules`）。
+#   2. 作为 profile 补丁：把下方 `- insert:` 条目复制进
+#      `$DSH_HOME/profiles/<name>/cordis.patch.yml`。
+#
+# host 行（当前即可加载）：
+# - 插件包 `@exam/dsh-exam` 的 main 指向 dist/host/index.js（Service 类插件，
+#   inject webServer/settings/llm，`super(ctx, 'exam')` 提供 `ctx.exam`）。
+# - `config.dataDir` 为显式数据目录字段；相对路径基于 dsh 启动目录（cwd）
+#   解析。不设置时回退 settings `exam.dataDir`，再回退 `<cwd>/.exam-data`。
+#   数据目录是**可配置路径**，绝不包含 API Key（密钥走 DSH credentials）。
+- insert:
+    - id: dsh-exam
+      name: '@exam/dsh-exam'
+      config:
+        dataDir: .exam-data
+
+# ── dsh.client 行（已启用）─────────────────────────────────────────────────
+#
+# dsh-exam 同一行在浏览器侧自动成为 dsh.client 行（浏览器 roster）：
+# `dsh-client-modules` 扫描 loader 树中声明了 package.json
+# `"dsh": { "client": { "platform": "web" } }` 且提供 `exports["./client"]`
+# 的包，将其编入 window.__DSH_BOOT__ 并挂载 /plugins/dsh-exam/client.js。
+# 因此**无需新增第二行**：package.json 已声明 `dsh.client`（含 client inject
+# 依赖列表），dist/client/client.js 已由 `pnpm run bundle` 产出；宿主行与
+# 浏览器行共享同一行（与 ui-sidebar 等 dual-face 包一致）。
+# 注意：若 dist/client/client.js 缺失/过旧，client-modules 会以聚合错误使
+# modules 行 FAILED，影响整个 Web 启动 —— 修改 src/client 后务必重建 bundle。

@@ -9,3 +9,14 @@ data/
 # editor/os
 .DS_Store
 *.log
+
+# 内部 agent 工具目录（不进 Git / GitHub）
+.agent-teams/
+.codebase-review/
+.npm-cache/
+.pnpm-store/
+.pi/
+.pi-glla/
+.pi-subagents/
+.rpiv/
+*.svg

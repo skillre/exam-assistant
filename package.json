@@ -8,11 +8,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "pnpm -r run build",
-    "typecheck": "pnpm -r exec tsc --noEmit",
-    "dev:server": "pnpm --filter @exam/server dev",
-    "dev:client": "pnpm --filter @exam/client dev",
-    "test": "pnpm -r run test"
+    "build": "pnpm --filter @exam/dsh-exam run build",
+    "typecheck": "pnpm --filter @exam/dsh-exam run typecheck",
+    "test": "pnpm --filter @exam/dsh-exam run test"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
