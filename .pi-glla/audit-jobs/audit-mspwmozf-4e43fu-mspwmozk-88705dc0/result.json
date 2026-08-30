@@ -1,1 +1,0 @@
-{"protocolVersion":1,"attemptId":"audit-mspwmozf-4e43fu-mspwmozk-88705dc0","requestHash":"697c02d35d5fa8fd3d2bc9e170f9b0915bf6f91b44df585db2546b57ef80f37f","ok":false,"output":"","model":"opencode-go-responses/deepseek-v4-flash","thinkingLevel":"max","toolCalls":[],"goalRevision":{"goalId":"20260812072702-hkogfo","revision":0},"error":"Connection error."}
